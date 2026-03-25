@@ -1,0 +1,203 @@
+import { useState } from "react"
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+} from "react-native"
+import { Link, useRouter } from "expo-router"
+import { useAuth } from "@/contexts/auth-context"
+import { Colors } from "@/constants/theme"
+import { useColorScheme } from "@/hooks/use-color-scheme"
+
+export default function RegisterScreen() {
+  const colorScheme = useColorScheme()
+  const colors = Colors[colorScheme ?? "light"]
+  const router = useRouter()
+  const { signUp } = useAuth()
+
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  async function handleRegister() {
+    if (!email || !password || !confirmPassword) {
+      Alert.alert("Error", "Please fill in all fields")
+      return
+    }
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match")
+      return
+    }
+    if (password.length < 8) {
+      Alert.alert("Error", "Password must be at least 8 characters")
+      return
+    }
+    setLoading(true)
+    try {
+      await signUp(email, password)
+      router.replace("/(tabs)")
+    } catch (err) {
+      Alert.alert(
+        "Registration Failed",
+        err instanceof Error ? err.message : "Could not create account",
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <View style={styles.content}>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Create Account
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.icon }]}>
+          Start tracking your finances
+        </Text>
+
+        <View style={styles.form}>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                color: colors.text,
+                borderColor: colors.icon,
+                backgroundColor: colorScheme === "dark" ? "#1e1e1e" : "#f5f5f5",
+              },
+            ]}
+            placeholder="Email"
+            placeholderTextColor={colors.icon}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+          />
+
+          <TextInput
+            style={[
+              styles.input,
+              {
+                color: colors.text,
+                borderColor: colors.icon,
+                backgroundColor: colorScheme === "dark" ? "#1e1e1e" : "#f5f5f5",
+              },
+            ]}
+            placeholder="Password (min 8 characters)"
+            placeholderTextColor={colors.icon}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoComplete="new-password"
+          />
+
+          <TextInput
+            style={[
+              styles.input,
+              {
+                color: colors.text,
+                borderColor: colors.icon,
+                backgroundColor: colorScheme === "dark" ? "#1e1e1e" : "#f5f5f5",
+              },
+            ]}
+            placeholder="Confirm Password"
+            placeholderTextColor={colors.icon}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+            autoComplete="new-password"
+          />
+
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: colors.tint }]}
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>
+              {loading ? "Creating account..." : "Sign up"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: colors.icon }]}>
+            Already have an account?{" "}
+          </Text>
+          <Link href="/(auth)/login" asChild>
+            <TouchableOpacity>
+              <Text style={[styles.linkText, { color: colors.tint }]}>
+                Sign in
+              </Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 32,
+  },
+  form: {
+    gap: 16,
+  },
+  input: {
+    height: 48,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    fontSize: 16,
+  },
+  button: {
+    height: 48,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  linkText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 24,
+  },
+  footerText: {
+    fontSize: 14,
+  },
+})

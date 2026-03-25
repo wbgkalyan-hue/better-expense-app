@@ -1,43 +1,179 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from "react-native"
+import { useColorScheme } from "@/hooks/use-color-scheme"
+import { Colors } from "@/constants/theme"
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+// Demo data — will be replaced with Firestore queries
+const DEMO_NETWORTH = 788000
+const DEMO_INCOME = 85000
+const DEMO_EXPENSES = 42300
+const DEMO_INVESTMENTS = 350000
+
+const RECENT_TRANSACTIONS = [
+  { id: "1", description: "Swiggy", amount: -450, date: "Today" },
+  { id: "2", description: "Salary", amount: 85000, date: "Yesterday" },
+  { id: "3", description: "Amazon", amount: -2499, date: "Mar 23" },
+  { id: "4", description: "Kite Deposit", amount: -10000, date: "Mar 22" },
+  { id: "5", description: "Electricity Bill", amount: -1800, date: "Mar 20" },
+]
+
+function formatCurrency(amount: number): string {
+  const abs = Math.abs(amount)
+  if (abs >= 100000) return `₹${(abs / 100000).toFixed(1)}L`
+  if (abs >= 1000) return `₹${(abs / 1000).toFixed(1)}K`
+  return `₹${abs}`
+}
 
 export default function HomeScreen() {
+  const colorScheme = useColorScheme()
+  const colors = Colors[colorScheme ?? "light"]
+  const cardBg = colorScheme === "dark" ? "#1e1e1e" : "#f5f5f5"
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.contentContainer}
+    >
+      <Text style={[styles.greeting, { color: colors.text }]}>
+        Good morning 👋
+      </Text>
+      <Text style={[styles.subtitle, { color: colors.icon }]}>
+        Here's your financial overview
+      </Text>
+
+      {/* Summary Cards */}
+      <View style={styles.cardsRow}>
+        <View style={[styles.card, { backgroundColor: cardBg }]}>
+          <Text style={[styles.cardLabel, { color: colors.icon }]}>
+            Networth
+          </Text>
+          <Text style={[styles.cardValue, { color: colors.text }]}>
+            {formatCurrency(DEMO_NETWORTH)}
+          </Text>
+        </View>
+        <View style={[styles.card, { backgroundColor: cardBg }]}>
+          <Text style={[styles.cardLabel, { color: colors.icon }]}>
+            Investments
+          </Text>
+          <Text style={[styles.cardValue, { color: colors.tint }]}>
+            {formatCurrency(DEMO_INVESTMENTS)}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.cardsRow}>
+        <View style={[styles.card, { backgroundColor: cardBg }]}>
+          <Text style={[styles.cardLabel, { color: colors.icon }]}>
+            Income
+          </Text>
+          <Text style={[styles.cardValue, { color: "#22c55e" }]}>
+            +{formatCurrency(DEMO_INCOME)}
+          </Text>
+        </View>
+        <View style={[styles.card, { backgroundColor: cardBg }]}>
+          <Text style={[styles.cardLabel, { color: colors.icon }]}>
+            Expenses
+          </Text>
+          <Text style={[styles.cardValue, { color: "#ef4444" }]}>
+            -{formatCurrency(DEMO_EXPENSES)}
+          </Text>
+        </View>
+      </View>
+
+      {/* Recent Transactions */}
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        Recent Transactions
+      </Text>
+      <View style={[styles.transactionList, { backgroundColor: cardBg }]}>
+        {RECENT_TRANSACTIONS.map((tx) => (
+          <View key={tx.id} style={styles.transactionRow}>
+            <View>
+              <Text style={[styles.txDescription, { color: colors.text }]}>
+                {tx.description}
+              </Text>
+              <Text style={[styles.txDate, { color: colors.icon }]}>
+                {tx.date}
+              </Text>
+            </View>
+            <Text
+              style={[
+                styles.txAmount,
+                { color: tx.amount > 0 ? "#22c55e" : "#ef4444" },
+              ]}
+            >
+              {tx.amount > 0 ? "+" : ""}₹{Math.abs(tx.amount).toLocaleString("en-IN")}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </ScrollView>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 20,
+    paddingTop: 60,
+  },
+  greeting: {
+    fontSize: 28,
+    fontWeight: "bold",
+  },
+  subtitle: {
+    fontSize: 14,
+    marginTop: 4,
+    marginBottom: 24,
+  },
+  cardsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 12,
+  },
+  card: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 16,
+  },
+  cardLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  cardValue: {
+    fontSize: 22,
+    fontWeight: "bold",
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  transactionList: {
+    borderRadius: 12,
+    padding: 16,
+    gap: 16,
+  },
+  transactionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  txDescription: {
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  txDate: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  txAmount: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+})
           <Link.Trigger>
             <ThemedText type="subtitle">Step 2: Explore</ThemedText>
           </Link.Trigger>
