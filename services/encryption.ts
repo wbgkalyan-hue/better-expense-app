@@ -1,52 +1,192 @@
-import * as SecureStore from "expo-secure-store"
-import * as Crypto from "expo-crypto"
-
-const KEY_ALIAS = "betterexpenses_encryption_key"
-
 /**
- * Get or generate the encryption key stored in the device secure enclave.
- */
-export async function getOrCreateKey(): Promise<string> {
-  let key = await SecureStore.getItemAsync(KEY_ALIAS)
-  if (!key) {
-    key = Crypto.randomUUID()
-    await SecureStore.setItemAsync(KEY_ALIAS, key)
-  }
-  return key
-}
-
-/**
- * Simple XOR-based obfuscation for the scaffold.
- * In production, replace with proper AES-256-GCM via a native crypto library.
+ * Password-manager-style AES-256-GCM encryption for local storage.
  *
- * The key is stored securely in expo-secure-store (Keystore on Android).
+ * Architecture:
+ * - On login, the user's password is used with PBKDF2 to derive a 256-bit master key.
+ * - The master key is stored in expo-secure-store (Android Keystore backed).
+ * - All local data (WatermelonDB) is encrypted/decrypted with this key.
+ * - On logout, the key is wiped — local data becomes unreadable blobs.
+ * - Format: base64(salt[16] + iv[12] + ciphertext+authTag) — compatible with dashboard.
  */
-export function encrypt(plaintext: string, key: string): string {
-  let result = ""
-  for (let i = 0; i < plaintext.length; i++) {
-    result += String.fromCharCode(
-      plaintext.charCodeAt(i) ^ key.charCodeAt(i % key.length),
-    )
+
+import { gcm } from "@noble/ciphers/aes.js"
+import { pbkdf2 } from "@noble/hashes/pbkdf2.js"
+import { sha256 } from "@noble/hashes/sha2.js"
+import { randomBytes } from "@noble/hashes/utils.js"
+import * as SecureStore from "expo-secure-store"
+
+const SALT_LENGTH = 16
+const IV_LENGTH = 12
+const KEY_LENGTH = 32 // 256 bits
+const PBKDF2_ITERATIONS = 600_000 // OWASP recommended minimum
+
+const KEY_ALIAS = "betterexpenses_master_key"
+const SALT_ALIAS = "betterexpenses_user_salt"
+
+// In-memory cache for the session
+let masterKey: Uint8Array | null = null
+let userSalt: Uint8Array | null = null
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = ""
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i])
   }
-  // Base64 encode for safe storage
-  return btoa(result)
+  return btoa(binary)
 }
 
-export function decrypt(ciphertext: string, key: string): string {
-  const decoded = atob(ciphertext)
-  let result = ""
-  for (let i = 0; i < decoded.length; i++) {
-    result += String.fromCharCode(
-      decoded.charCodeAt(i) ^ key.charCodeAt(i % key.length),
-    )
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i)
   }
-  return result
+  return bytes
 }
 
-export function encryptObject<T>(data: T, key: string): string {
-  return encrypt(JSON.stringify(data), key)
+// ---------------------------------------------------------------------------
+// Key management
+// ---------------------------------------------------------------------------
+
+/**
+ * Initialize encryption after user login.
+ * Derives a master key from password + per-user salt via PBKDF2.
+ */
+export async function initializeEncryption(password: string): Promise<void> {
+  // Get or create a per-user salt (persisted across logins)
+  let saltB64 = await SecureStore.getItemAsync(SALT_ALIAS)
+  if (!saltB64) {
+    const newSalt = randomBytes(SALT_LENGTH)
+    userSalt = newSalt
+    saltB64 = bytesToBase64(newSalt)
+    await SecureStore.setItemAsync(SALT_ALIAS, saltB64)
+  } else {
+    userSalt = base64ToBytes(saltB64)
+  }
+
+  // Derive master key via PBKDF2(SHA-256, 600k iterations)
+  const derivedKey = pbkdf2(sha256, new TextEncoder().encode(password), userSalt, {
+    c: PBKDF2_ITERATIONS,
+    dkLen: KEY_LENGTH,
+  })
+  masterKey = derivedKey
+
+  // Store master key in SecureStore (hardware-backed Android Keystore)
+  await SecureStore.setItemAsync(KEY_ALIAS, bytesToBase64(derivedKey))
 }
 
-export function decryptObject<T>(ciphertext: string, key: string): T {
-  return JSON.parse(decrypt(ciphertext, key)) as T
+/**
+ * Restore encryption key from SecureStore (e.g., app restart while logged in).
+ */
+export async function restoreEncryption(): Promise<boolean> {
+  const keyB64 = await SecureStore.getItemAsync(KEY_ALIAS)
+  const saltB64 = await SecureStore.getItemAsync(SALT_ALIAS)
+  if (keyB64 && saltB64) {
+    masterKey = base64ToBytes(keyB64)
+    userSalt = base64ToBytes(saltB64)
+    return true
+  }
+  return false
+}
+
+/**
+ * Clear encryption key on logout. Local data becomes unreadable.
+ */
+export async function clearEncryption(): Promise<void> {
+  masterKey = null
+  userSalt = null
+  await SecureStore.deleteItemAsync(KEY_ALIAS)
+  // Keep the salt — it's needed to re-derive the same key on next login
+}
+
+/**
+ * Check if encryption is initialized and ready to use.
+ */
+export function isEncryptionReady(): boolean {
+  return masterKey !== null && userSalt !== null
+}
+
+// ---------------------------------------------------------------------------
+// Encrypt / Decrypt
+// ---------------------------------------------------------------------------
+
+/**
+ * Encrypt plaintext → base64(salt[16] + iv[12] + ciphertext+authTag).
+ *
+ * Uses the cached master key with the user's fixed salt.
+ * Format is compatible with the dashboard's Web Crypto API implementation.
+ */
+export function encrypt(plaintext: string): string {
+  if (!masterKey || !userSalt) {
+    throw new Error("Encryption not initialized — user must be logged in")
+  }
+
+  const iv = randomBytes(IV_LENGTH)
+  const encoded = new TextEncoder().encode(plaintext)
+
+  const aes = gcm(masterKey, iv)
+  const ciphertext = aes.encrypt(encoded)
+
+  // Combine: salt[16] + iv[12] + ciphertext (GCM auth tag is appended by noble)
+  const combined = new Uint8Array(
+    userSalt.length + iv.length + ciphertext.length,
+  )
+  combined.set(userSalt, 0)
+  combined.set(iv, userSalt.length)
+  combined.set(ciphertext, userSalt.length + iv.length)
+
+  return bytesToBase64(combined)
+}
+
+/**
+ * Decrypt base64-encoded ciphertext → plaintext.
+ *
+ * Handles both:
+ * - Mobile-encrypted data (uses cached master key when salt matches)
+ * - Dashboard-encrypted data (derives key from password + embedded salt)
+ */
+export function decrypt(encoded: string, password?: string): string {
+  const combined = base64ToBytes(encoded)
+
+  const salt = combined.slice(0, SALT_LENGTH)
+  const iv = combined.slice(SALT_LENGTH, SALT_LENGTH + IV_LENGTH)
+  const ciphertext = combined.slice(SALT_LENGTH + IV_LENGTH)
+
+  let key: Uint8Array
+
+  // If salt matches our user salt, use the cached master key (fast path)
+  if (masterKey && userSalt && salt.every((b, i) => b === userSalt![i])) {
+    key = masterKey
+  } else if (password) {
+    // Different salt (e.g., dashboard-encrypted data) — derive key on the fly
+    key = pbkdf2(sha256, new TextEncoder().encode(password), salt, {
+      c: PBKDF2_ITERATIONS,
+      dkLen: KEY_LENGTH,
+    })
+  } else {
+    throw new Error("Cannot decrypt: salt mismatch and no password provided")
+  }
+
+  const aes = gcm(key, iv)
+  const plaintext = aes.decrypt(ciphertext)
+
+  return new TextDecoder().decode(plaintext)
+}
+
+/**
+ * Encrypt a JSON-serializable value.
+ */
+export function encryptValue(value: unknown): string {
+  return encrypt(JSON.stringify(value))
+}
+
+/**
+ * Decrypt a JSON value.
+ */
+export function decryptValue<T>(encoded: string, password?: string): T {
+  return JSON.parse(decrypt(encoded, password)) as T
 }

@@ -1,20 +1,20 @@
-import { View, Text, ScrollView, StyleSheet } from "react-native"
+import { useState, useEffect } from "react"
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native"
 import { useColorScheme } from "@/hooks/use-color-scheme"
 import { Colors } from "@/constants/theme"
-
-// Demo data — will be replaced with Firestore queries
-const DEMO_NETWORTH = 788000
-const DEMO_INCOME = 85000
-const DEMO_EXPENSES = 42300
-const DEMO_INVESTMENTS = 350000
-
-const RECENT_TRANSACTIONS = [
-  { id: "1", description: "Swiggy", amount: -450, date: "Today" },
-  { id: "2", description: "Salary", amount: 85000, date: "Yesterday" },
-  { id: "3", description: "Amazon", amount: -2499, date: "Mar 23" },
-  { id: "4", description: "Kite Deposit", amount: -10000, date: "Mar 22" },
-  { id: "5", description: "Electricity Bill", amount: -1800, date: "Mar 20" },
-]
+import { useAuth } from "@/contexts/auth-context"
+import {
+  getLocalTransactions,
+  getLocalNetworthSnapshots,
+  getLocalBrokerAccounts,
+} from "@/services/database"
+import type { Transaction, NetworthSnapshot } from "@/types"
 
 function formatCurrency(amount: number): string {
   const abs = Math.abs(amount)
@@ -23,10 +23,69 @@ function formatCurrency(amount: number): string {
   return `₹${abs}`
 }
 
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr)
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  if (date.toDateString() === today.toDateString()) return "Today"
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday"
+  return date.toLocaleDateString("en-IN", { month: "short", day: "numeric" })
+}
+
 export default function HomeScreen() {
   const colorScheme = useColorScheme()
   const colors = Colors[colorScheme ?? "light"]
   const cardBg = colorScheme === "dark" ? "#1e1e1e" : "#f5f5f5"
+  const { user, encryptionReady } = useAuth()
+
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [networth, setNetworth] = useState(0)
+  const [totalInvestments, setTotalInvestments] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user || !encryptionReady) return
+    loadData()
+  }, [user, encryptionReady])
+
+  async function loadData() {
+    try {
+      const [txs, snapshots, brokers] = await Promise.all([
+        getLocalTransactions(user!.uid),
+        getLocalNetworthSnapshots(user!.uid),
+        getLocalBrokerAccounts(user!.uid),
+      ])
+      setTransactions(txs)
+      if (snapshots.length > 0) {
+        setNetworth(snapshots[0].networth)
+      }
+      setTotalInvestments(
+        brokers.reduce((sum, b) => sum + b.currentValue, 0),
+      )
+    } catch (err) {
+      console.error("Failed to load home data:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const income = transactions
+    .filter((t) => t.type === "income")
+    .reduce((sum, t) => sum + t.amount, 0)
+  const expenses = transactions
+    .filter((t) => t.type === "expense")
+    .reduce((sum, t) => sum + t.amount, 0)
+  const recentTransactions = transactions.slice(0, 5)
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.center, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.tint} />
+      </View>
+    )
+  }
 
   return (
     <ScrollView
@@ -47,7 +106,7 @@ export default function HomeScreen() {
             Networth
           </Text>
           <Text style={[styles.cardValue, { color: colors.text }]}>
-            {formatCurrency(DEMO_NETWORTH)}
+            {formatCurrency(networth)}
           </Text>
         </View>
         <View style={[styles.card, { backgroundColor: cardBg }]}>
@@ -55,7 +114,7 @@ export default function HomeScreen() {
             Investments
           </Text>
           <Text style={[styles.cardValue, { color: colors.tint }]}>
-            {formatCurrency(DEMO_INVESTMENTS)}
+            {formatCurrency(totalInvestments)}
           </Text>
         </View>
       </View>
@@ -66,7 +125,7 @@ export default function HomeScreen() {
             Income
           </Text>
           <Text style={[styles.cardValue, { color: "#22c55e" }]}>
-            +{formatCurrency(DEMO_INCOME)}
+            +{formatCurrency(income)}
           </Text>
         </View>
         <View style={[styles.card, { backgroundColor: cardBg }]}>
@@ -74,7 +133,7 @@ export default function HomeScreen() {
             Expenses
           </Text>
           <Text style={[styles.cardValue, { color: "#ef4444" }]}>
-            -{formatCurrency(DEMO_EXPENSES)}
+            -{formatCurrency(expenses)}
           </Text>
         </View>
       </View>
@@ -83,28 +142,37 @@ export default function HomeScreen() {
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
         Recent Transactions
       </Text>
-      <View style={[styles.transactionList, { backgroundColor: cardBg }]}>
-        {RECENT_TRANSACTIONS.map((tx) => (
-          <View key={tx.id} style={styles.transactionRow}>
-            <View>
-              <Text style={[styles.txDescription, { color: colors.text }]}>
-                {tx.description}
-              </Text>
-              <Text style={[styles.txDate, { color: colors.icon }]}>
-                {tx.date}
+      {recentTransactions.length === 0 ? (
+        <View style={[styles.emptyState, { backgroundColor: cardBg }]}>
+          <Text style={[styles.emptyText, { color: colors.icon }]}>
+            No transactions yet. Add one or sync from cloud.
+          </Text>
+        </View>
+      ) : (
+        <View style={[styles.transactionList, { backgroundColor: cardBg }]}>
+          {recentTransactions.map((tx) => (
+            <View key={tx.id} style={styles.transactionRow}>
+              <View>
+                <Text style={[styles.txDescription, { color: colors.text }]}>
+                  {tx.description}
+                </Text>
+                <Text style={[styles.txDate, { color: colors.icon }]}>
+                  {formatDate(tx.date)}
+                </Text>
+              </View>
+              <Text
+                style={[
+                  styles.txAmount,
+                  { color: tx.type === "income" ? "#22c55e" : "#ef4444" },
+                ]}
+              >
+                {tx.type === "income" ? "+" : "-"}₹
+                {Math.abs(tx.amount).toLocaleString("en-IN")}
               </Text>
             </View>
-            <Text
-              style={[
-                styles.txAmount,
-                { color: tx.amount > 0 ? "#22c55e" : "#ef4444" },
-              ]}
-            >
-              {tx.amount > 0 ? "+" : ""}₹{Math.abs(tx.amount).toLocaleString("en-IN")}
-            </Text>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   )
 }
@@ -173,62 +241,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  center: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyState: {
+    borderRadius: 12,
+    padding: 24,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: "center",
+  },
 })
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
-
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
-}
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});

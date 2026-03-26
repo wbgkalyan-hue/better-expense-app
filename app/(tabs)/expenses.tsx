@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   View,
   Text,
@@ -7,21 +7,14 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from "react-native"
 import { useColorScheme } from "@/hooks/use-color-scheme"
 import { Colors } from "@/constants/theme"
 import { EXPENSE_CATEGORY_LABELS, ExpenseCategory } from "@/types"
-
-const DEMO_EXPENSES = [
-  { id: "1", description: "Swiggy Order", amount: 450, category: ExpenseCategory.FOOD, date: "Mar 25", source: "auto" as const },
-  { id: "2", description: "Uber Ride", amount: 230, category: ExpenseCategory.TRANSPORT, date: "Mar 24", source: "auto" as const },
-  { id: "3", description: "Amazon Purchase", amount: 2499, category: ExpenseCategory.SHOPPING, date: "Mar 23", source: "manual" as const },
-  { id: "4", description: "Netflix", amount: 649, category: ExpenseCategory.SUBSCRIPTIONS, date: "Mar 22", source: "auto" as const },
-  { id: "5", description: "Electricity Bill", amount: 1800, category: ExpenseCategory.BILLS, date: "Mar 20", source: "auto" as const },
-  { id: "6", description: "Groceries", amount: 1250, category: ExpenseCategory.GROCERIES, date: "Mar 19", source: "manual" as const },
-  { id: "7", description: "Doctor Visit", amount: 500, category: ExpenseCategory.HEALTH, date: "Mar 18", source: "manual" as const },
-  { id: "8", description: "Movie Tickets", amount: 600, category: ExpenseCategory.ENTERTAINMENT, date: "Mar 17", source: "auto" as const },
-]
+import { useAuth } from "@/contexts/auth-context"
+import { getLocalTransactions, addLocalTransaction } from "@/services/database"
+import type { Transaction } from "@/types"
 
 const CATEGORY_COLORS: Record<string, string> = {
   food: "#f97316",
@@ -43,12 +36,45 @@ export default function ExpensesScreen() {
   const colorScheme = useColorScheme()
   const colors = Colors[colorScheme ?? "light"]
   const cardBg = colorScheme === "dark" ? "#1e1e1e" : "#f5f5f5"
+  const { user, encryptionReady } = useAuth()
   const [search, setSearch] = useState("")
+  const [expenses, setExpenses] = useState<Transaction[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const total = DEMO_EXPENSES.reduce((sum, e) => sum + e.amount, 0)
-  const filtered = DEMO_EXPENSES.filter((e) =>
+  const loadExpenses = useCallback(async () => {
+    if (!user || !encryptionReady) return
+    try {
+      const txs = await getLocalTransactions(user.uid)
+      setExpenses(txs.filter((t) => t.type === "expense"))
+    } catch (err) {
+      console.error("Failed to load expenses:", err)
+    } finally {
+      setLoading(false)
+    }
+  }, [user, encryptionReady])
+
+  useEffect(() => {
+    loadExpenses()
+  }, [loadExpenses])
+
+  const total = expenses.reduce((sum, e) => sum + e.amount, 0)
+  const filtered = expenses.filter((e) =>
     e.description.toLowerCase().includes(search.toLowerCase()),
   )
+
+  function handleAddExpense() {
+    Alert.prompt
+      ? Alert.prompt("Add Expense", "Enter description and amount (e.g., Swiggy 450)")
+      : Alert.alert("Add Expense", "Coming soon — full expense entry form")
+  }
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.center, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.tint} />
+      </View>
+    )
+  }
 
   return (
     <ScrollView
@@ -83,6 +109,13 @@ export default function ExpensesScreen() {
       />
 
       {/* Expense List */}
+      {filtered.length === 0 ? (
+        <View style={[styles.emptyState, { backgroundColor: cardBg }]}>
+          <Text style={[styles.emptyText, { color: colors.icon }]}>
+            {search ? "No matching expenses" : "No expenses yet. Add one or sync from cloud."}
+          </Text>
+        </View>
+      ) : (
       <View style={[styles.list, { backgroundColor: cardBg }]}>
         {filtered.map((expense) => (
           <View key={expense.id} style={styles.expenseRow}>
@@ -101,7 +134,7 @@ export default function ExpensesScreen() {
                   {expense.description}
                 </Text>
                 <Text style={[styles.expenseMeta, { color: colors.icon }]}>
-                  {EXPENSE_CATEGORY_LABELS[expense.category]} • {expense.date}
+                  {EXPENSE_CATEGORY_LABELS[expense.category as ExpenseCategory] ?? expense.category} • {new Date(expense.date).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
                   {expense.source === "auto" ? " • 🔔" : ""}
                 </Text>
               </View>
@@ -112,11 +145,12 @@ export default function ExpensesScreen() {
           </View>
         ))}
       </View>
+      )}
 
       {/* Add Button */}
       <TouchableOpacity
         style={[styles.addButton, { backgroundColor: colors.tint }]}
-        onPress={() => Alert.alert("Add Expense", "Coming soon — manual expense entry form")}
+        onPress={handleAddExpense}
       >
         <Text style={styles.addButtonText}>+ Add Expense</Text>
       </TouchableOpacity>
@@ -163,4 +197,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   addButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  center: { justifyContent: "center", alignItems: "center" },
+  emptyState: { borderRadius: 12, padding: 24, alignItems: "center" },
+  emptyText: { fontSize: 14, textAlign: "center" },
 })

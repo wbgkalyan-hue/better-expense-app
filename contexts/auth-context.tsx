@@ -6,10 +6,16 @@ import React, {
   type ReactNode,
 } from "react"
 import auth, { type FirebaseAuthTypes } from "@react-native-firebase/auth"
+import {
+  initializeEncryption,
+  clearEncryption,
+  restoreEncryption,
+} from "@/services/encryption"
 
 interface AuthContextValue {
   user: FirebaseAuthTypes.User | null
   loading: boolean
+  encryptionReady: boolean
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
@@ -21,10 +27,18 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [encryptionReady, setEncryptionReady] = useState(false)
 
   useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged((firebaseUser) => {
+    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
       setUser(firebaseUser)
+      if (firebaseUser) {
+        // Try to restore encryption key from SecureStore (app restart)
+        const restored = await restoreEncryption()
+        setEncryptionReady(restored)
+      } else {
+        setEncryptionReady(false)
+      }
       setLoading(false)
     })
     return unsubscribe
@@ -32,13 +46,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signIn(email: string, password: string) {
     await auth().signInWithEmailAndPassword(email, password)
+    // Derive and cache encryption key from password
+    await initializeEncryption(password)
+    setEncryptionReady(true)
   }
 
   async function signUp(email: string, password: string) {
     await auth().createUserWithEmailAndPassword(email, password)
+    // Derive and cache encryption key from password
+    await initializeEncryption(password)
+    setEncryptionReady(true)
   }
 
   async function signOut() {
+    // Wipe encryption key — local data becomes unreadable
+    await clearEncryption()
+    setEncryptionReady(false)
     await auth().signOut()
   }
 
@@ -48,7 +71,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, signIn, signUp, signOut, resetPassword }}
+      value={{
+        user,
+        loading,
+        encryptionReady,
+        signIn,
+        signUp,
+        signOut,
+        resetPassword,
+      }}
     >
       {children}
     </AuthContext.Provider>

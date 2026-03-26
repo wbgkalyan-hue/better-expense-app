@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from "react"
 import {
   View,
   Text,
@@ -5,83 +6,18 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from "react-native"
 import { useColorScheme } from "@/hooks/use-color-scheme"
 import { Colors } from "@/constants/theme"
 import { GoalType, GOAL_TYPE_LABELS } from "@/types"
 import { calculateGoalAllocations } from "@/services/goal-engine"
+import { useAuth } from "@/contexts/auth-context"
+import {
+  getLocalGoals,
+  getLocalNetworthSnapshots,
+} from "@/services/database"
 import type { Goal } from "@/types"
-
-const DEMO_NETWORTH = 788000
-
-const DEMO_GOALS: Goal[] = [
-  {
-    id: "1",
-    userId: "demo",
-    title: "Emergency Fund",
-    type: GoalType.EMERGENCY_FUND,
-    targetAmount: 200000,
-    currentAmount: 150000,
-    priority: 1,
-    isActive: true,
-    deductsFromNetworth: true,
-    createdAt: "",
-    updatedAt: "",
-  },
-  {
-    id: "2",
-    userId: "demo",
-    title: "Goa Trip",
-    type: GoalType.TRIP,
-    targetAmount: 30000,
-    currentAmount: 12000,
-    priority: 2,
-    deadline: "2026-06-15",
-    isActive: true,
-    deductsFromNetworth: true,
-    createdAt: "",
-    updatedAt: "",
-  },
-  {
-    id: "3",
-    userId: "demo",
-    title: "MacBook Pro",
-    type: GoalType.BIG_PURCHASE,
-    targetAmount: 180000,
-    currentAmount: 45000,
-    priority: 3,
-    isActive: true,
-    deductsFromNetworth: true,
-    createdAt: "",
-    updatedAt: "",
-  },
-  {
-    id: "4",
-    userId: "demo",
-    title: "Credit Card Payoff",
-    type: GoalType.DEBT_PAYOFF,
-    targetAmount: 25000,
-    currentAmount: 18000,
-    priority: 4,
-    isActive: true,
-    deductsFromNetworth: false,
-    createdAt: "",
-    updatedAt: "",
-  },
-  {
-    id: "5",
-    userId: "demo",
-    title: "₹10L Portfolio",
-    type: GoalType.INVESTMENT_TARGET,
-    targetAmount: 1000000,
-    currentAmount: 395000,
-    priority: 5,
-    isActive: true,
-    deductsFromNetworth: false,
-    createdAt: "",
-    updatedAt: "",
-  },
-]
 
 const GOAL_TYPE_ICONS: Record<GoalType, string> = {
   [GoalType.TRIP]: "✈️",
@@ -96,12 +32,47 @@ export default function GoalsScreen() {
   const colorScheme = useColorScheme()
   const colors = Colors[colorScheme ?? "light"]
   const cardBg = colorScheme === "dark" ? "#1e1e1e" : "#f5f5f5"
+  const { user, encryptionReady } = useAuth()
 
-  const goalsWithProgress = calculateGoalAllocations(DEMO_GOALS, DEMO_NETWORTH)
-  const totalLocked = DEMO_GOALS.filter(
-    (g) => g.isActive && g.deductsFromNetworth,
-  ).reduce((s, g) => s + g.targetAmount, 0)
-  const totalSaved = DEMO_GOALS.reduce((s, g) => s + g.currentAmount, 0)
+  const [goals, setGoals] = useState<Goal[]>([])
+  const [networth, setNetworth] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  const loadData = useCallback(async () => {
+    if (!user || !encryptionReady) return
+    try {
+      const [goalsData, snapshots] = await Promise.all([
+        getLocalGoals(user.uid),
+        getLocalNetworthSnapshots(user.uid),
+      ])
+      setGoals(goalsData)
+      if (snapshots.length > 0) {
+        setNetworth(snapshots[0].networth)
+      }
+    } catch (err) {
+      console.error("Failed to load goals:", err)
+    } finally {
+      setLoading(false)
+    }
+  }, [user, encryptionReady])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  const goalsWithProgress = calculateGoalAllocations(goals, networth)
+  const totalLocked = goals
+    .filter((g) => g.isActive && g.deductsFromNetworth)
+    .reduce((s, g) => s + g.targetAmount, 0)
+  const totalSaved = goals.reduce((s, g) => s + g.currentAmount, 0)
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.center, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.tint} />
+      </View>
+    )
+  }
 
   return (
     <ScrollView
@@ -117,7 +88,7 @@ export default function GoalsScreen() {
             Networth
           </Text>
           <Text style={[styles.summaryValue, { color: colors.text }]}>
-            ₹{(DEMO_NETWORTH / 100000).toFixed(1)}L
+            ₹{networth >= 100000 ? (networth / 100000).toFixed(1) + "L" : networth.toLocaleString("en-IN")}
           </Text>
         </View>
         <View style={[styles.summaryCard, { backgroundColor: cardBg }]}>
@@ -267,4 +238,5 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   addButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  center: { justifyContent: "center", alignItems: "center" },
 })

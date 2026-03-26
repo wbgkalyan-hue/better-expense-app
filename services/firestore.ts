@@ -1,4 +1,5 @@
 import { firestore, auth } from "./firebase"
+import type { FirebaseFirestoreTypes } from "@react-native-firebase/firestore"
 import type {
   Transaction,
   BrokerAccount,

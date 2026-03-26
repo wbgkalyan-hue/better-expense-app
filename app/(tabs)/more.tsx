@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from "react-native"
 import { useRouter } from "expo-router"
 import { useColorScheme } from "@/hooks/use-color-scheme"
@@ -14,6 +15,9 @@ import {
   hasNotificationPermission,
   requestNotificationPermission,
 } from "@/services/notification-listener"
+import { performSync } from "@/services/sync"
+import { getUnsyncedCount } from "@/services/database"
+import { isEncryptionReady } from "@/services/encryption"
 import { useState, useEffect } from "react"
 
 interface MenuItem {
@@ -31,10 +35,15 @@ export default function MoreScreen() {
   const { user, signOut } = useAuth()
   const router = useRouter()
   const [notifPermission, setNotifPermission] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [unsyncedCount, setUnsyncedCount] = useState(0)
 
   useEffect(() => {
     hasNotificationPermission().then(setNotifPermission)
-  }, [])
+    if (user) {
+      getUnsyncedCount(user.uid).then(setUnsyncedCount).catch(() => {})
+    }
+  }, [user])
 
   const menuSections: { title: string; items: MenuItem[] }[] = [
     {
@@ -89,15 +98,55 @@ export default function MoreScreen() {
         },
         {
           title: "Sync to Firebase",
-          subtitle: "Encrypted sync is available",
+          subtitle: syncing
+            ? "Syncing..."
+            : unsyncedCount > 0
+              ? `${unsyncedCount} unsynced changes`
+              : "All data synced",
           icon: "☁️",
-          onPress: () => Alert.alert("Sync", "Sync functionality coming soon. Your data is stored locally and encrypted."),
+          onPress: async () => {
+            if (syncing) return
+            if (!isEncryptionReady()) {
+              Alert.alert("Encryption Required", "Please sign in again to enable encryption before syncing.")
+              return
+            }
+            setSyncing(true)
+            try {
+              const result = await performSync()
+              const messages = [
+                `Pushed: ${result.pushed} records`,
+                `Pulled: ${result.pulled} records`,
+              ]
+              if (result.errors.length > 0) {
+                messages.push(`Errors: ${result.errors.length}`)
+              }
+              Alert.alert("Sync Complete", messages.join("\n"))
+              if (user) {
+                const count = await getUnsyncedCount(user.uid)
+                setUnsyncedCount(count)
+              }
+            } catch (err: any) {
+              Alert.alert("Sync Failed", err.message)
+            } finally {
+              setSyncing(false)
+            }
+          },
         },
         {
           title: "Encryption",
-          subtitle: "AES-256 • Keys in Secure Store",
+          subtitle: isEncryptionReady()
+            ? "AES-256-GCM • Unlocked"
+            : "AES-256-GCM • Locked (sign in to unlock)",
           icon: "🔐",
-          onPress: () => Alert.alert("Encryption", "All your data is encrypted using AES-256. Keys are stored in Android Keystore via Expo SecureStore."),
+          onPress: () =>
+            Alert.alert(
+              "Encryption",
+              "Your local data is encrypted with AES-256-GCM.\n\n" +
+                "• Key derived from your password via PBKDF2 (600K iterations)\n" +
+                "• Master key stored in Android Keystore\n" +
+                "• On logout, the key is wiped — data becomes unreadable\n" +
+                "• Same encryption format as the dashboard",
+            ),
         },
       ],
     },

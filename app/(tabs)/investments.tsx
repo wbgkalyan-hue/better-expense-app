@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from "react"
 import {
   View,
   Text,
@@ -5,40 +6,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from "react-native"
 import { useRouter } from "expo-router"
 import { useColorScheme } from "@/hooks/use-color-scheme"
 import { Colors } from "@/constants/theme"
-
-const DEMO_BROKERS = [
-  {
-    id: "1",
-    name: "Zerodha Kite",
-    broker: "Kite",
-    totalInvested: 200000,
-    currentValue: 245000,
-    returns: 45000,
-    returnsPercent: 22.5,
-  },
-  {
-    id: "2",
-    name: "Groww Stocks",
-    broker: "Groww",
-    totalInvested: 80000,
-    currentValue: 92000,
-    returns: 12000,
-    returnsPercent: 15.0,
-  },
-  {
-    id: "3",
-    name: "Coin SIP",
-    broker: "Coin",
-    totalInvested: 50000,
-    currentValue: 58000,
-    returns: 8000,
-    returnsPercent: 16.0,
-  },
-]
+import { useAuth } from "@/contexts/auth-context"
+import { getLocalBrokerAccounts } from "@/services/database"
+import type { BrokerAccount } from "@/types"
 
 function formatCurrency(amount: number): string {
   if (amount >= 100000) return `₹${(amount / 100000).toFixed(2)}L`
@@ -50,11 +25,39 @@ export default function InvestmentsScreen() {
   const colorScheme = useColorScheme()
   const colors = Colors[colorScheme ?? "light"]
   const cardBg = colorScheme === "dark" ? "#1e1e1e" : "#f5f5f5"
+  const { user, encryptionReady } = useAuth()
+  const [brokers, setBrokers] = useState<BrokerAccount[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const totalInvested = DEMO_BROKERS.reduce((s, b) => s + b.totalInvested, 0)
-  const totalCurrent = DEMO_BROKERS.reduce((s, b) => s + b.currentValue, 0)
+  const loadBrokers = useCallback(async () => {
+    if (!user || !encryptionReady) return
+    try {
+      const data = await getLocalBrokerAccounts(user.uid)
+      setBrokers(data)
+    } catch (err) {
+      console.error("Failed to load brokers:", err)
+    } finally {
+      setLoading(false)
+    }
+  }, [user, encryptionReady])
+
+  useEffect(() => {
+    loadBrokers()
+  }, [loadBrokers])
+
+  const totalInvested = brokers.reduce((s, b) => s + b.totalInvested, 0)
+  const totalCurrent = brokers.reduce((s, b) => s + b.currentValue, 0)
   const totalReturns = totalCurrent - totalInvested
-  const totalPercent = ((totalReturns / totalInvested) * 100).toFixed(1)
+  const totalPercent =
+    totalInvested > 0 ? ((totalReturns / totalInvested) * 100).toFixed(1) : "0.0"
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.center, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.tint} />
+      </View>
+    )
+  }
 
   return (
     <ScrollView
@@ -95,7 +98,14 @@ export default function InvestmentsScreen() {
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
         Broker Accounts
       </Text>
-      {DEMO_BROKERS.map((broker) => (
+      {brokers.length === 0 ? (
+        <View style={[styles.emptyState, { backgroundColor: cardBg }]}>
+          <Text style={[styles.emptyText, { color: colors.icon }]}>
+            No broker accounts yet. Add one or sync from cloud.
+          </Text>
+        </View>
+      ) : (
+      brokers.map((broker) => (
         <TouchableOpacity
           key={broker.id}
           style={[styles.brokerCard, { backgroundColor: cardBg }]}
@@ -151,7 +161,8 @@ export default function InvestmentsScreen() {
             />
           </View>
         </TouchableOpacity>
-      ))}
+      ))
+      )}
 
       {/* Add Broker Button */}
       <TouchableOpacity
@@ -224,4 +235,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   patternsButtonText: { fontSize: 15, fontWeight: "600" },
+  center: { justifyContent: "center", alignItems: "center" },
+  emptyState: { borderRadius: 12, padding: 24, alignItems: "center", marginBottom: 12 },
+  emptyText: { fontSize: 14, textAlign: "center" },
 })
