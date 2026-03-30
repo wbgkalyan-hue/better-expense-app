@@ -2,8 +2,8 @@
  * Manual sync engine: push local changes → Firestore, pull Firestore → local.
  *
  * Sync is triggered ONLY by user pressing the sync button.
- * Data is encrypted in WatermelonDB and stored as plaintext in Firestore
- * (so the dashboard can read it). On pull, plaintext is re-encrypted locally.
+ * Data is encrypted in both WatermelonDB and Firestore using the same shared
+ * per-user salt, so encrypted values can be pushed/pulled directly.
  */
 
 import { Q } from "@nozbe/watermelondb"
@@ -18,7 +18,7 @@ import {
   AssetModel,
   NetworthSnapshotModel,
 } from "@/database/models"
-import { encryptValue, decryptValue } from "@/services/encryption"
+import { encryptValue } from "@/services/encryption"
 import { firestore, auth } from "@/services/firebase"
 
 export interface SyncResult {
@@ -51,18 +51,15 @@ async function pushTransactions(): Promise<{ count: number; errors: string[] }> 
     try {
       const data = {
         userId: model.userId,
-        amount: decryptValue<number>(model.encryptedAmount),
+        amount: model.encryptedAmount,
         type: model.type,
         category: model.category,
         date: model.dateStr,
         source: model.source,
-        description: decryptValue<string>(model.encryptedDescription),
-        merchant: model.encryptedMerchant
-          ? decryptValue<string>(model.encryptedMerchant)
-          : null,
-        rawNotification: model.encryptedRawNotification
-          ? decryptValue<string>(model.encryptedRawNotification)
-          : null,
+        description: model.encryptedDescription,
+        merchant: model.encryptedMerchant || null,
+        rawNotification: model.encryptedRawNotification || null,
+        _encrypted: true,
         createdAt: firestore.FieldValue.serverTimestamp(),
         updatedAt: firestore.FieldValue.serverTimestamp(),
       }
@@ -113,10 +110,11 @@ async function pushBrokerAccounts(): Promise<{
         userId: model.userId,
         name: model.name,
         broker: model.broker,
-        currentValue: decryptValue<number>(model.encryptedCurrentValue),
-        totalInvested: decryptValue<number>(model.encryptedTotalInvested),
-        returns: decryptValue<number>(model.encryptedReturns),
-        returnsPercent: decryptValue<number>(model.encryptedReturnsPercent),
+        currentValue: model.encryptedCurrentValue,
+        totalInvested: model.encryptedTotalInvested,
+        returns: model.encryptedReturns,
+        returnsPercent: model.encryptedReturnsPercent,
+        _encrypted: true,
         createdAt: firestore.FieldValue.serverTimestamp(),
         updatedAt: firestore.FieldValue.serverTimestamp(),
       }
@@ -168,16 +166,13 @@ async function pushInvestmentTransactions(): Promise<{
       const data = {
         userId: model.userId,
         brokerAccountId: model.brokerAccountId,
-        amount: decryptValue<number>(model.encryptedAmount),
+        amount: model.encryptedAmount,
         type: model.type,
         date: model.dateStr,
         source: model.source,
-        note: model.encryptedNote
-          ? decryptValue<string>(model.encryptedNote)
-          : null,
-        rawNotification: model.encryptedRawNotification
-          ? decryptValue<string>(model.encryptedRawNotification)
-          : null,
+        note: model.encryptedNote || null,
+        rawNotification: model.encryptedRawNotification || null,
+        _encrypted: true,
         createdAt: firestore.FieldValue.serverTimestamp(),
       }
 
@@ -226,15 +221,14 @@ async function pushGoals(): Promise<{ count: number; errors: string[] }> {
         userId: model.userId,
         title: model.title,
         type: model.type,
-        targetAmount: decryptValue<number>(model.encryptedTargetAmount),
-        currentAmount: decryptValue<number>(model.encryptedCurrentAmount),
+        targetAmount: model.encryptedTargetAmount,
+        currentAmount: model.encryptedCurrentAmount,
         priority: model.priority,
         deadline: model.deadline || null,
         isActive: model.isActive,
         deductsFromNetworth: model.deductsFromNetworth,
-        description: model.encryptedDescription
-          ? decryptValue<string>(model.encryptedDescription)
-          : null,
+        description: model.encryptedDescription || null,
+        _encrypted: true,
         createdAt: firestore.FieldValue.serverTimestamp(),
         updatedAt: firestore.FieldValue.serverTimestamp(),
       }
@@ -299,6 +293,7 @@ async function pullTransactions(): Promise<{
         const data = doc.data()
         const existing = existingByFirestoreId.get(doc.id)
 
+        const enc = data._encrypted === true
         if (existing) {
           // Update existing record
           await existing.update((rec) => {
@@ -306,13 +301,13 @@ async function pullTransactions(): Promise<{
             rec.category = data.category
             rec.dateStr = data.date
             rec.source = data.source
-            rec.encryptedAmount = encryptValue(data.amount)
-            rec.encryptedDescription = encryptValue(data.description)
+            rec.encryptedAmount = enc ? data.amount : encryptValue(data.amount)
+            rec.encryptedDescription = enc ? data.description : encryptValue(data.description)
             rec.encryptedMerchant = data.merchant
-              ? encryptValue(data.merchant)
+              ? (enc ? data.merchant : encryptValue(data.merchant))
               : ""
             rec.encryptedRawNotification = data.rawNotification
-              ? encryptValue(data.rawNotification)
+              ? (enc ? data.rawNotification : encryptValue(data.rawNotification))
               : ""
             rec.isSynced = true
           })
@@ -325,15 +320,15 @@ async function pullTransactions(): Promise<{
             rec.category = data.category
             rec.dateStr = data.date
             rec.source = data.source ?? "manual"
-            rec.encryptedAmount = encryptValue(data.amount)
-            rec.encryptedDescription = encryptValue(
-              data.description ?? "",
-            )
+            rec.encryptedAmount = enc ? data.amount : encryptValue(data.amount)
+            rec.encryptedDescription = enc
+              ? (data.description ?? "")
+              : encryptValue(data.description ?? "")
             rec.encryptedMerchant = data.merchant
-              ? encryptValue(data.merchant)
+              ? (enc ? data.merchant : encryptValue(data.merchant))
               : ""
             rec.encryptedRawNotification = data.rawNotification
-              ? encryptValue(data.rawNotification)
+              ? (enc ? data.rawNotification : encryptValue(data.rawNotification))
               : ""
             rec.isSynced = true
           })
@@ -377,14 +372,15 @@ async function pullBrokerAccounts(): Promise<{
         const data = doc.data()
         const existing = existingByFirestoreId.get(doc.id)
 
+        const enc = data._encrypted === true
         if (existing) {
           await existing.update((rec) => {
             rec.name = data.name
             rec.broker = data.broker
-            rec.encryptedCurrentValue = encryptValue(data.currentValue)
-            rec.encryptedTotalInvested = encryptValue(data.totalInvested)
-            rec.encryptedReturns = encryptValue(data.returns)
-            rec.encryptedReturnsPercent = encryptValue(data.returnsPercent)
+            rec.encryptedCurrentValue = enc ? data.currentValue : encryptValue(data.currentValue)
+            rec.encryptedTotalInvested = enc ? data.totalInvested : encryptValue(data.totalInvested)
+            rec.encryptedReturns = enc ? data.returns : encryptValue(data.returns)
+            rec.encryptedReturnsPercent = enc ? data.returnsPercent : encryptValue(data.returnsPercent)
             rec.isSynced = true
           })
         } else {
@@ -393,14 +389,10 @@ async function pullBrokerAccounts(): Promise<{
             rec.userId = uid
             rec.name = data.name
             rec.broker = data.broker
-            rec.encryptedCurrentValue = encryptValue(data.currentValue ?? 0)
-            rec.encryptedTotalInvested = encryptValue(
-              data.totalInvested ?? 0,
-            )
-            rec.encryptedReturns = encryptValue(data.returns ?? 0)
-            rec.encryptedReturnsPercent = encryptValue(
-              data.returnsPercent ?? 0,
-            )
+            rec.encryptedCurrentValue = enc ? data.currentValue : encryptValue(data.currentValue ?? 0)
+            rec.encryptedTotalInvested = enc ? data.totalInvested : encryptValue(data.totalInvested ?? 0)
+            rec.encryptedReturns = enc ? data.returns : encryptValue(data.returns ?? 0)
+            rec.encryptedReturnsPercent = enc ? data.returnsPercent : encryptValue(data.returnsPercent ?? 0)
             rec.isSynced = true
           })
         }
@@ -440,6 +432,7 @@ async function pullGoals(): Promise<{ count: number; errors: string[] }> {
         const data = doc.data()
         const existing = existingByFirestoreId.get(doc.id)
 
+        const enc = data._encrypted === true
         if (existing) {
           await existing.update((rec) => {
             rec.title = data.title
@@ -448,10 +441,10 @@ async function pullGoals(): Promise<{ count: number; errors: string[] }> {
             rec.deadline = data.deadline ?? ""
             rec.isActive = data.isActive ?? true
             rec.deductsFromNetworth = data.deductsFromNetworth ?? false
-            rec.encryptedTargetAmount = encryptValue(data.targetAmount)
-            rec.encryptedCurrentAmount = encryptValue(data.currentAmount)
+            rec.encryptedTargetAmount = enc ? data.targetAmount : encryptValue(data.targetAmount)
+            rec.encryptedCurrentAmount = enc ? data.currentAmount : encryptValue(data.currentAmount)
             rec.encryptedDescription = data.description
-              ? encryptValue(data.description)
+              ? (enc ? data.description : encryptValue(data.description))
               : ""
             rec.isSynced = true
           })
@@ -465,12 +458,12 @@ async function pullGoals(): Promise<{ count: number; errors: string[] }> {
             rec.deadline = data.deadline ?? ""
             rec.isActive = data.isActive ?? true
             rec.deductsFromNetworth = data.deductsFromNetworth ?? false
-            rec.encryptedTargetAmount = encryptValue(data.targetAmount ?? 0)
-            rec.encryptedCurrentAmount = encryptValue(
-              data.currentAmount ?? 0,
-            )
+            rec.encryptedTargetAmount = enc ? data.targetAmount : encryptValue(data.targetAmount ?? 0)
+            rec.encryptedCurrentAmount = enc
+              ? data.currentAmount
+              : encryptValue(data.currentAmount ?? 0)
             rec.encryptedDescription = data.description
-              ? encryptValue(data.description)
+              ? (enc ? data.description : encryptValue(data.description))
               : ""
             rec.isSynced = true
           })
@@ -514,18 +507,17 @@ async function pullNetworthSnapshots(): Promise<{
         const data = doc.data()
         if (existingByFirestoreId.has(doc.id)) continue // Snapshots are immutable
 
+        const enc = data._encrypted === true
         await collection.create((rec) => {
           rec.firestoreId = doc.id
           rec.userId = uid
           rec.dateStr = data.date
-          rec.encryptedTotalBank = encryptValue(data.totalBank ?? 0)
-          rec.encryptedTotalInvestments = encryptValue(
-            data.totalInvestments ?? 0,
-          )
-          rec.encryptedTotalAssets = encryptValue(data.totalAssets ?? 0)
-          rec.encryptedTotalDebts = encryptValue(data.totalDebts ?? 0)
-          rec.encryptedNetworth = encryptValue(data.networth ?? 0)
-          rec.encryptedLiquidFunds = encryptValue(data.liquidFunds ?? 0)
+          rec.encryptedTotalBank = enc ? data.totalBank : encryptValue(data.totalBank ?? 0)
+          rec.encryptedTotalInvestments = enc ? data.totalInvestments : encryptValue(data.totalInvestments ?? 0)
+          rec.encryptedTotalAssets = enc ? data.totalAssets : encryptValue(data.totalAssets ?? 0)
+          rec.encryptedTotalDebts = enc ? data.totalDebts : encryptValue(data.totalDebts ?? 0)
+          rec.encryptedNetworth = enc ? data.networth : encryptValue(data.networth ?? 0)
+          rec.encryptedLiquidFunds = enc ? data.liquidFunds : encryptValue(data.liquidFunds ?? 0)
           rec.isSynced = true
         })
         count++

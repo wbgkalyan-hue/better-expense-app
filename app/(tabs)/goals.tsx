@@ -5,8 +5,13 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  TextInput,
   Alert,
   ActivityIndicator,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Switch,
 } from "react-native"
 import { useColorScheme } from "@/hooks/use-color-scheme"
 import { Colors } from "@/constants/theme"
@@ -16,6 +21,7 @@ import { useAuth } from "@/contexts/auth-context"
 import {
   getLocalGoals,
   getLocalNetworthSnapshots,
+  addLocalGoal,
 } from "@/services/database"
 import type { Goal } from "@/types"
 
@@ -37,6 +43,14 @@ export default function GoalsScreen() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [networth, setNetworth] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [showAdd, setShowAdd] = useState(false)
+  const [formTitle, setFormTitle] = useState("")
+  const [formType, setFormType] = useState<GoalType | null>(null)
+  const [formTarget, setFormTarget] = useState("")
+  const [formCurrent, setFormCurrent] = useState("")
+  const [formPriority, setFormPriority] = useState("1")
+  const [formDeducts, setFormDeducts] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   const loadData = useCallback(async () => {
     if (!user || !encryptionReady) return
@@ -59,6 +73,35 @@ export default function GoalsScreen() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  async function handleAddGoal() {
+    if (!user || !formTitle || !formType || !formTarget) return
+    setSaving(true)
+    try {
+      await addLocalGoal({
+        userId: user.uid,
+        title: formTitle,
+        type: formType,
+        targetAmount: parseFloat(formTarget),
+        currentAmount: formCurrent ? parseFloat(formCurrent) : 0,
+        priority: parseInt(formPriority, 10) || 1,
+        isActive: true,
+        deductsFromNetworth: formDeducts,
+      })
+      setShowAdd(false)
+      setFormTitle("")
+      setFormType(null)
+      setFormTarget("")
+      setFormCurrent("")
+      setFormPriority("1")
+      setFormDeducts(false)
+      await loadData()
+    } catch (err: any) {
+      Alert.alert("Error", err.message ?? "Failed to add goal")
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const goalsWithProgress = calculateGoalAllocations(goals, networth)
   const totalLocked = goals
@@ -182,10 +225,97 @@ export default function GoalsScreen() {
       {/* Add Goal Button */}
       <TouchableOpacity
         style={[styles.addButton, { backgroundColor: colors.tint }]}
-        onPress={() => Alert.alert("Add Goal", "Coming soon — create a new financial goal")}
+        onPress={() => setShowAdd(true)}
       >
         <Text style={styles.addButtonText}>+ Add Goal</Text>
       </TouchableOpacity>
+
+      {/* Add Goal Modal */}
+      <Modal visible={showAdd} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Add Goal</Text>
+            <TextInput
+              style={[styles.modalInput, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]}
+              placeholder="Goal Title (e.g. Europe Trip)"
+              placeholderTextColor={colors.icon}
+              value={formTitle}
+              onChangeText={setFormTitle}
+            />
+
+            <Text style={[styles.modalLabel, { color: colors.text }]}>Type</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
+              {Object.entries(GOAL_TYPE_LABELS).map(([val, label]) => (
+                <TouchableOpacity
+                  key={val}
+                  style={[
+                    styles.typeChip,
+                    {
+                      backgroundColor: formType === val ? colors.tint : cardBg,
+                      borderColor: formType === val ? "transparent" : colors.icon + "40",
+                    },
+                  ]}
+                  onPress={() => setFormType(val as GoalType)}
+                >
+                  <Text style={{ color: formType === val ? "#fff" : colors.text, fontSize: 13 }}>
+                    {GOAL_TYPE_ICONS[val as GoalType]} {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <TextInput
+                style={[styles.modalInput, { flex: 1, color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]}
+                placeholder="Target (₹)"
+                placeholderTextColor={colors.icon}
+                keyboardType="numeric"
+                value={formTarget}
+                onChangeText={setFormTarget}
+              />
+              <TextInput
+                style={[styles.modalInput, { flex: 1, color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]}
+                placeholder="Saved so far (₹)"
+                placeholderTextColor={colors.icon}
+                keyboardType="numeric"
+                value={formCurrent}
+                onChangeText={setFormCurrent}
+              />
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <TextInput
+                style={[styles.modalInput, { width: 80, color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]}
+                placeholder="Priority"
+                placeholderTextColor={colors.icon}
+                keyboardType="numeric"
+                value={formPriority}
+                onChangeText={setFormPriority}
+              />
+              <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <Switch value={formDeducts} onValueChange={setFormDeducts} />
+                <Text style={{ color: colors.text, fontSize: 13, flex: 1 }}>Deduct from networth</Text>
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalCancel, { borderColor: colors.icon }]} onPress={() => setShowAdd(false)}>
+                <Text style={{ color: colors.text }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSave, { backgroundColor: colors.tint, opacity: saving || !formTitle || !formType || !formTarget ? 0.5 : 1 }]}
+                onPress={handleAddGoal}
+                disabled={saving || !formTitle || !formType || !formTarget}
+              >
+                <Text style={{ color: "#fff", fontWeight: "600" }}>{saving ? "Saving..." : "Add"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScrollView>
   )
 }
@@ -239,4 +369,14 @@ const styles = StyleSheet.create({
   },
   addButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
   center: { justifyContent: "center", alignItems: "center" },
+  modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
+  modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
+  modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 16 },
+  modalInput: { height: 48, borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, fontSize: 15, marginBottom: 12 },
+  modalLabel: { fontSize: 14, fontWeight: "600", marginBottom: 8 },
+  typeScroll: { marginBottom: 16, maxHeight: 44 },
+  typeChip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, marginRight: 8 },
+  modalActions: { flexDirection: "row", gap: 12, marginTop: 8 },
+  modalCancel: { flex: 1, height: 48, borderWidth: 1, borderRadius: 10, justifyContent: "center", alignItems: "center" },
+  modalSave: { flex: 2, height: 48, borderRadius: 10, justifyContent: "center", alignItems: "center" },
 })

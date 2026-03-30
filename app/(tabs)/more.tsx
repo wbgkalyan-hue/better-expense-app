@@ -47,35 +47,31 @@ export default function MoreScreen() {
 
   const menuSections: { title: string; items: MenuItem[] }[] = [
     {
-      title: "Coming Soon",
+      title: "Finance",
       items: [
         {
           title: "Income",
           subtitle: "Track salary, freelance, and other income",
           icon: "💰",
-          comingSoon: true,
-          onPress: () => Alert.alert("Coming Soon", "Income tracking will be available soon"),
+          onPress: () => router.push("/(tabs)/income"),
         },
         {
           title: "Bank Accounts",
           subtitle: "Savings, FD, RD, and more",
           icon: "🏦",
-          comingSoon: true,
-          onPress: () => Alert.alert("Coming Soon", "Bank account tracking will be available soon"),
+          onPress: () => router.push("/(tabs)/bank-accounts"),
         },
         {
           title: "Assets",
           subtitle: "Property, vehicles, gold, electronics",
           icon: "📦",
-          comingSoon: true,
-          onPress: () => Alert.alert("Coming Soon", "Asset tracking will be available soon"),
+          onPress: () => router.push("/(tabs)/assets"),
         },
         {
           title: "Networth",
           subtitle: "Total financial overview and trends",
           icon: "📊",
-          comingSoon: true,
-          onPress: () => Alert.alert("Coming Soon", "Networth overview will be available soon"),
+          onPress: () => router.push("/(tabs)/networth"),
         },
       ],
     },

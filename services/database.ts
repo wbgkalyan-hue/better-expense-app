@@ -378,6 +378,27 @@ export async function getLocalBankAccounts(
   return models.map(decryptBankAccount)
 }
 
+export async function addLocalBankAccount(
+  data: Omit<BankAccount, "id" | "createdAt" | "updatedAt">,
+): Promise<string> {
+  const collection = database.get<BankAccountModel>("bank_accounts")
+  const record = await database.write(async () => {
+    return collection.create((rec) => {
+      rec.userId = data.userId
+      rec.name = data.name
+      rec.bankName = data.bankName
+      rec.type = data.type
+      rec.maturityDate = data.maturityDate ?? ""
+      rec.encryptedBalance = encryptValue(data.balance)
+      rec.encryptedInterestRate = data.interestRate
+        ? encryptValue(data.interestRate)
+        : ""
+      rec.isSynced = false
+    })
+  })
+  return record.id
+}
+
 // ---------------------------------------------------------------------------
 // Assets
 // ---------------------------------------------------------------------------
@@ -405,6 +426,27 @@ export async function getLocalAssets(userId: string): Promise<Asset[]> {
     .query(Q.where("user_id", userId))
     .fetch()
   return models.map(decryptAsset)
+}
+
+export async function addLocalAsset(
+  data: Omit<Asset, "id" | "createdAt" | "updatedAt">,
+): Promise<string> {
+  const collection = database.get<AssetModel>("assets")
+  const record = await database.write(async () => {
+    return collection.create((rec) => {
+      rec.userId = data.userId
+      rec.name = data.name
+      rec.type = data.type
+      rec.purchaseDate = data.purchaseDate ?? ""
+      rec.encryptedCurrentValue = encryptValue(data.currentValue)
+      rec.encryptedPurchaseValue = encryptValue(data.purchaseValue)
+      rec.encryptedDescription = data.description
+        ? encryptValue(data.description)
+        : ""
+      rec.isSynced = false
+    })
+  })
+  return record.id
 }
 
 // ---------------------------------------------------------------------------

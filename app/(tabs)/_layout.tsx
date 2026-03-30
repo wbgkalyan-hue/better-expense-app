@@ -51,6 +51,22 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={24} name="ellipsis.circle.fill" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="income"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="bank-accounts"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="assets"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="networth"
+        options={{ href: null }}
+      />
     </Tabs>
   );
 }

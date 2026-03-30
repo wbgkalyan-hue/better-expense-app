@@ -17,5 +17,8 @@ export {
   BankAccountType,
   AssetType,
   EXPENSE_CATEGORY_LABELS,
+  INCOME_CATEGORY_LABELS,
   GOAL_TYPE_LABELS,
+  BANK_ACCOUNT_TYPE_LABELS,
+  ASSET_TYPE_LABELS,
 } from "./categories"

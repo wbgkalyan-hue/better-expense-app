@@ -2,11 +2,13 @@
  * Password-manager-style AES-256-GCM encryption for local storage.
  *
  * Architecture:
- * - On login, the user's password is used with PBKDF2 to derive a 256-bit master key.
+ * - On login, a shared per-user salt is fetched from Firestore (or created).
+ * - The salt + password are used via PBKDF2 to derive a 256-bit master key.
  * - The master key is stored in expo-secure-store (Android Keystore backed).
  * - All local data (WatermelonDB) is encrypted/decrypted with this key.
  * - On logout, the key is wiped — local data becomes unreadable blobs.
  * - Format: base64(salt[16] + iv[12] + ciphertext+authTag) — compatible with dashboard.
+ * - The shared salt ensures both mobile and dashboard derive the same key.
  */
 
 import { gcm } from "@noble/ciphers/aes.js"
@@ -14,6 +16,7 @@ import { pbkdf2 } from "@noble/hashes/pbkdf2.js"
 import { sha256 } from "@noble/hashes/sha2.js"
 import { randomBytes } from "@noble/hashes/utils.js"
 import * as SecureStore from "expo-secure-store"
+import { firestore, auth } from "@/services/firebase"
 
 const SALT_LENGTH = 16
 const IV_LENGTH = 12
@@ -54,19 +57,45 @@ function base64ToBytes(base64: string): Uint8Array {
 
 /**
  * Initialize encryption after user login.
- * Derives a master key from password + per-user salt via PBKDF2.
+ * Fetches (or creates) a shared per-user salt from Firestore so that
+ * both mobile and dashboard derive the same key from the same password.
  */
 export async function initializeEncryption(password: string): Promise<void> {
-  // Get or create a per-user salt (persisted across logins)
-  let saltB64 = await SecureStore.getItemAsync(SALT_ALIAS)
-  if (!saltB64) {
-    const newSalt = randomBytes(SALT_LENGTH)
-    userSalt = newSalt
-    saltB64 = bytesToBase64(newSalt)
-    await SecureStore.setItemAsync(SALT_ALIAS, saltB64)
+  let salt: Uint8Array
+
+  // Try to get the shared salt from Firestore
+  const user = auth().currentUser
+  if (user) {
+    try {
+      const doc = await firestore()
+        .collection("user_settings")
+        .doc(user.uid)
+        .get()
+      const docData = doc.data()
+      if (docData?.encryptionSalt) {
+        salt = base64ToBytes(docData.encryptionSalt)
+      } else {
+        // First login — create shared salt
+        salt = randomBytes(SALT_LENGTH)
+        await firestore()
+          .collection("user_settings")
+          .doc(user.uid)
+          .set({ encryptionSalt: bytesToBase64(salt) }, { merge: true })
+      }
+    } catch {
+      // Offline fallback — use locally cached salt or generate
+      const localSalt = await SecureStore.getItemAsync(SALT_ALIAS)
+      salt = localSalt ? base64ToBytes(localSalt) : randomBytes(SALT_LENGTH)
+    }
   } else {
-    userSalt = base64ToBytes(saltB64)
+    // No auth — use local salt
+    const localSalt = await SecureStore.getItemAsync(SALT_ALIAS)
+    salt = localSalt ? base64ToBytes(localSalt) : randomBytes(SALT_LENGTH)
   }
+
+  // Cache salt locally for offline use
+  await SecureStore.setItemAsync(SALT_ALIAS, bytesToBase64(salt))
+  userSalt = salt
 
   // Derive master key via PBKDF2(SHA-256, 600k iterations)
   const derivedKey = pbkdf2(sha256, new TextEncoder().encode(password), userSalt, {

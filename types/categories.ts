@@ -66,6 +66,17 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   [ExpenseCategory.OTHER]: "Other",
 }
 
+export const INCOME_CATEGORY_LABELS: Record<IncomeCategory, string> = {
+  [IncomeCategory.SALARY]: "Salary",
+  [IncomeCategory.FREELANCE]: "Freelance",
+  [IncomeCategory.BUSINESS]: "Business",
+  [IncomeCategory.INVESTMENTS]: "Investments",
+  [IncomeCategory.RENTAL]: "Rental Income",
+  [IncomeCategory.GIFT]: "Gift",
+  [IncomeCategory.REFUND]: "Refund",
+  [IncomeCategory.OTHER]: "Other",
+}
+
 export const GOAL_TYPE_LABELS: Record<GoalType, string> = {
   [GoalType.TRIP]: "Trip / Vacation",
   [GoalType.EMERGENCY_FUND]: "Emergency Fund",
@@ -73,4 +84,20 @@ export const GOAL_TYPE_LABELS: Record<GoalType, string> = {
   [GoalType.DEBT_PAYOFF]: "Debt Payoff",
   [GoalType.INVESTMENT_TARGET]: "Investment Target",
   [GoalType.CUSTOM]: "Custom",
+}
+
+export const BANK_ACCOUNT_TYPE_LABELS: Record<BankAccountType, string> = {
+  [BankAccountType.SAVINGS]: "Savings",
+  [BankAccountType.FD]: "Fixed Deposit",
+  [BankAccountType.RD]: "Recurring Deposit",
+  [BankAccountType.CURRENT]: "Current",
+  [BankAccountType.OTHER]: "Other",
+}
+
+export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
+  [AssetType.PROPERTY]: "Property",
+  [AssetType.VEHICLE]: "Vehicle",
+  [AssetType.GOLD]: "Gold",
+  [AssetType.ELECTRONICS]: "Electronics",
+  [AssetType.OTHER]: "Other",
 }
