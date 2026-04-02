@@ -17,7 +17,8 @@ import { useColorScheme } from "@/hooks/use-color-scheme"
 import { Colors } from "@/constants/theme"
 import { useAuth } from "@/contexts/auth-context"
 import { getFriends, addFriend } from "@/services/firestore"
-import type { Friend } from "@/types"
+import type { Friend, FriendRelationship } from "@/types"
+import { FRIEND_RELATIONSHIP_LABELS } from "@/types"
 
 export default function FriendsScreen() {
   const colorScheme = useColorScheme()
@@ -31,6 +32,9 @@ export default function FriendsScreen() {
   const [formName, setFormName] = useState("")
   const [formPhone, setFormPhone] = useState("")
   const [formEmail, setFormEmail] = useState("")
+  const [formRelationship, setFormRelationship] = useState<FriendRelationship | "">("")
+  const [formTags, setFormTags] = useState("")
+  const [formAddress, setFormAddress] = useState("")
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
@@ -51,14 +55,18 @@ export default function FriendsScreen() {
     if (!user || !formName) return
     setSaving(true)
     try {
+      const tags = formTags ? formTags.split(",").map((t) => t.trim()).filter(Boolean) : undefined
       await addFriend({
         userId: user.uid,
         name: formName,
         phone: formPhone || undefined,
         email: formEmail || undefined,
+        relationship: formRelationship || undefined,
+        tags: tags,
+        address: formAddress || undefined,
       })
       setShowAdd(false)
-      setFormName(""); setFormPhone(""); setFormEmail("")
+      setFormName(""); setFormPhone(""); setFormEmail(""); setFormRelationship(""); setFormTags(""); setFormAddress("")
       await load()
     } catch (err: any) {
       Alert.alert("Error", err.message ?? "Failed to add")
@@ -106,7 +114,7 @@ export default function FriendsScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.cardName, { color: colors.text }]}>{item.name}</Text>
                 <Text style={[styles.cardSub, { color: colors.icon }]}>
-                  {[item.phone, item.email].filter(Boolean).join(" • ") || "No contact info"}
+                  {[item.relationship ? FRIEND_RELATIONSHIP_LABELS[item.relationship] : null, item.phone, item.email].filter(Boolean).join(" • ") || "No contact info"}
                 </Text>
               </View>
               <Text style={[styles.chevron, { color: colors.icon }]}>›</Text>
@@ -124,8 +132,18 @@ export default function FriendsScreen() {
           <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>Add Friend</Text>
             <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Name" placeholderTextColor={colors.icon} value={formName} onChangeText={setFormName} />
+            <Text style={[styles.modalLabel, { color: colors.text }]}>Relationship</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
+              {Object.entries(FRIEND_RELATIONSHIP_LABELS).map(([val, label]) => (
+                <TouchableOpacity key={val} style={[styles.typeChip, { backgroundColor: formRelationship === val ? colors.tint : cardBg, borderColor: formRelationship === val ? "transparent" : colors.icon + "40" }]} onPress={() => setFormRelationship(val as FriendRelationship)}>
+                  <Text style={{ color: formRelationship === val ? "#fff" : colors.text, fontSize: 13 }}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
             <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Phone (optional)" placeholderTextColor={colors.icon} keyboardType="phone-pad" value={formPhone} onChangeText={setFormPhone} />
             <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Email (optional)" placeholderTextColor={colors.icon} keyboardType="email-address" value={formEmail} onChangeText={setFormEmail} />
+            <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Tags (comma-separated, optional)" placeholderTextColor={colors.icon} value={formTags} onChangeText={setFormTags} />
+            <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Address (optional)" placeholderTextColor={colors.icon} value={formAddress} onChangeText={setFormAddress} />
             <View style={styles.modalActions}>
               <TouchableOpacity style={[styles.modalCancel, { borderColor: colors.icon }]} onPress={() => setShowAdd(false)}>
                 <Text style={{ color: colors.text }}>Cancel</Text>
@@ -164,6 +182,9 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
   modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
   modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 16 },
+  modalLabel: { fontSize: 14, fontWeight: "600", marginBottom: 8 },
+  typeScroll: { marginBottom: 16, maxHeight: 44 },
+  typeChip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, marginRight: 8 },
   input: { height: 48, borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, fontSize: 15, marginBottom: 12 },
   modalActions: { flexDirection: "row", gap: 12, marginTop: 8 },
   modalCancel: { flex: 1, height: 48, borderWidth: 1, borderRadius: 10, justifyContent: "center", alignItems: "center" },

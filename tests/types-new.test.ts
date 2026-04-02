@@ -12,7 +12,9 @@ import {
   INSURANCE_FREQUENCY_LABELS,
   LOAN_TYPE_LABELS,
   LEDGER_ENTRY_TYPE_LABELS,
-  PARTNER_LEDGER_TYPE_LABELS,
+  FAMILY_LEDGER_TYPE_LABELS,
+  FRIEND_RELATIONSHIP_LABELS,
+  FAMILY_RELATIONSHIP_LABELS,
   PROPERTY_TYPE_LABELS,
   PROPERTY_CATEGORY_LABELS,
 } from "@/types"
@@ -27,11 +29,11 @@ import type {
   Loan,
   LoanType,
   Friend,
-  Partner,
+  FamilyMember,
   FriendsLedgerEntry,
   LedgerEntryType,
-  PartnersLedgerEntry,
-  PartnerLedgerType,
+  FamilyLedgerEntry,
+  FamilyLedgerType,
   Property,
   PropertyType,
   PropertyCategory,
@@ -83,12 +85,28 @@ describe("Label completeness", () => {
     expect(Object.keys(LEDGER_ENTRY_TYPE_LABELS).length).toBe(types.length)
   })
 
-  it("PARTNER_LEDGER_TYPE_LABELS covers all types", () => {
-    const types: PartnerLedgerType[] = ["paid", "received", "shared"]
+  it("FAMILY_LEDGER_TYPE_LABELS covers all types", () => {
+    const types: FamilyLedgerType[] = ["paid", "received", "shared"]
     for (const t of types) {
-      expect(PARTNER_LEDGER_TYPE_LABELS[t]).toBeDefined()
+      expect(FAMILY_LEDGER_TYPE_LABELS[t]).toBeDefined()
     }
-    expect(Object.keys(PARTNER_LEDGER_TYPE_LABELS).length).toBe(types.length)
+    expect(Object.keys(FAMILY_LEDGER_TYPE_LABELS).length).toBe(types.length)
+  })
+
+  it("FRIEND_RELATIONSHIP_LABELS covers all types", () => {
+    const types = ["colleague", "neighbor", "classmate", "other"] as const
+    for (const t of types) {
+      expect(FRIEND_RELATIONSHIP_LABELS[t]).toBeDefined()
+    }
+    expect(Object.keys(FRIEND_RELATIONSHIP_LABELS).length).toBe(types.length)
+  })
+
+  it("FAMILY_RELATIONSHIP_LABELS covers all types", () => {
+    const types = ["wife", "husband", "son", "daughter", "father", "mother", "brother", "sister", "other"] as const
+    for (const t of types) {
+      expect(FAMILY_RELATIONSHIP_LABELS[t]).toBeDefined()
+    }
+    expect(Object.keys(FAMILY_RELATIONSHIP_LABELS).length).toBe(types.length)
   })
 
   it("PROPERTY_TYPE_LABELS covers all types", () => {
@@ -190,15 +208,17 @@ describe("Type shape validation", () => {
     expect(item.name).toBe("Rahul")
   })
 
-  it("Partner has required fields", () => {
-    const item: Partner = {
+  it("FamilyMember has required fields", () => {
+    const item: FamilyMember = {
       id: "1",
       userId: "u1",
       name: "Priya",
+      relationship: "wife",
       createdAt: "2024-01-01",
       updatedAt: "2024-01-01",
     }
     expect(item.name).toBe("Priya")
+    expect(item.relationship).toBe("wife")
   })
 
   it("FriendsLedgerEntry defaults settled to false", () => {
@@ -217,14 +237,14 @@ describe("Type shape validation", () => {
     expect(item.settled).toBe(false)
   })
 
-  it("PartnersLedgerEntry has all required fields", () => {
-    const item: PartnersLedgerEntry = {
+  it("FamilyLedgerEntry has all required fields", () => {
+    const item: FamilyLedgerEntry = {
       id: "1",
       userId: "u1",
-      partnerId: "p1",
+      familyMemberId: "fm1",
       type: "paid",
       amount: 10000,
-      description: "Office supplies",
+      description: "Grocery shopping",
       date: "2024-03-15",
       settled: false,
       createdAt: "2024-03-15",

@@ -77,15 +77,15 @@ import {
   addFriend,
   getFriends,
   deleteFriend,
-  addPartner,
-  getPartners,
-  deletePartner,
+  addFamilyMember,
+  getFamilyMembers,
+  deleteFamilyMember,
   addFriendsLedgerEntry,
   getFriendsLedger,
   deleteFriendsLedgerEntry,
-  addPartnersLedgerEntry,
-  getPartnersLedger,
-  deletePartnersLedgerEntry,
+  addFamilyLedgerEntry,
+  getFamilyLedger,
+  deleteFamilyLedgerEntry,
   addProperty,
   getProperties,
   deleteProperty,
@@ -350,43 +350,41 @@ describe("Friends", () => {
   })
 })
 
-describe("Partners", () => {
+describe("Family Members", () => {
   beforeEach(resetMocks)
 
-  it("addPartner encrypts sensitive fields", async () => {
-    const id = await addPartner({
+  it("addFamilyMember encrypts sensitive fields", async () => {
+    const id = await addFamilyMember({
       userId: "u1",
       name: "Priya",
-      company: "TechCorp",
+      relationship: "wife",
       phone: "9876543211",
-      email: "priya@techcorp.com",
+      email: "priya@home.com",
     })
     expect(id).toBe("auto-id-1")
     const stored = mockDocs.get(id)!
     expect(String(stored.name)).toMatch(/^ENC\(/)
-    expect(String(stored.company)).toMatch(/^ENC\(/)
     expect(String(stored.phone)).toMatch(/^ENC\(/)
     expect(String(stored.email)).toMatch(/^ENC\(/)
   })
 
-  it("getPartners decrypts sensitive fields", async () => {
-    mockDocs.set("p1", {
+  it("getFamilyMembers decrypts sensitive fields", async () => {
+    mockDocs.set("fm1", {
       userId: "u1",
       name: 'ENC("Priya")',
-      company: 'ENC("TechCorp")',
+      relationship: "wife",
       phone: 'ENC("9876543211")',
       _encrypted: true,
       createdAt: "2024-01-01",
       updatedAt: "2024-01-01",
     })
-    const items = await getPartners()
+    const items = await getFamilyMembers()
     expect(items.length).toBe(1)
     expect(items[0].name).toBe("Priya")
-    expect(items[0].company).toBe("TechCorp")
   })
 
-  it("deletePartner calls delete", async () => {
-    await deletePartner("p1")
+  it("deleteFamilyMember calls delete", async () => {
+    await deleteFamilyMember("fm1")
     expect(mockDelete).toHaveBeenCalled()
   })
 })
@@ -438,17 +436,17 @@ describe("Friends Ledger", () => {
   })
 })
 
-describe("Partners Ledger", () => {
+describe("Family Ledger", () => {
   beforeEach(resetMocks)
 
-  it("addPartnersLedgerEntry encrypts sensitive fields", async () => {
-    const id = await addPartnersLedgerEntry({
+  it("addFamilyLedgerEntry encrypts sensitive fields", async () => {
+    const id = await addFamilyLedgerEntry({
       userId: "u1",
-      partnerId: "p1",
-      partnerName: "Priya",
+      familyMemberId: "fm1",
+      familyMemberName: "Priya",
       type: "paid",
       amount: 10000,
-      description: "Office supplies",
+      description: "Grocery shopping",
       date: "2024-03-15",
       settled: false,
     })
@@ -459,27 +457,27 @@ describe("Partners Ledger", () => {
     expect(stored.type).toBe("paid")
   })
 
-  it("getPartnersLedger decrypts sensitive fields", async () => {
-    mockDocs.set("pl1", {
+  it("getFamilyLedger decrypts sensitive fields", async () => {
+    mockDocs.set("fl1", {
       userId: "u1",
-      partnerId: "p1",
+      familyMemberId: "fm1",
       type: "paid",
       amount: "ENC(10000)",
-      description: 'ENC("Office supplies")',
+      description: 'ENC("Grocery shopping")',
       date: "2024-03-15",
       settled: false,
       _encrypted: true,
       createdAt: "2024-03-15",
       updatedAt: "2024-03-15",
     })
-    const items = await getPartnersLedger()
+    const items = await getFamilyLedger()
     expect(items.length).toBe(1)
     expect(items[0].amount).toBe(10000)
-    expect(items[0].description).toBe("Office supplies")
+    expect(items[0].description).toBe("Grocery shopping")
   })
 
-  it("deletePartnersLedgerEntry calls delete", async () => {
-    await deletePartnersLedgerEntry("pl1")
+  it("deleteFamilyLedgerEntry calls delete", async () => {
+    await deleteFamilyLedgerEntry("fl1")
     expect(mockDelete).toHaveBeenCalled()
   })
 })

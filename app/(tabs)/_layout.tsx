@@ -88,15 +88,15 @@ export default function TabLayout() {
         options={{ href: null }}
       />
       <Tabs.Screen
-        name="partners-ledger"
-        options={{ href: null }}
-      />
-      <Tabs.Screen
         name="friends"
         options={{ href: null }}
       />
       <Tabs.Screen
-        name="partners"
+        name="family"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="family-ledger"
         options={{ href: null }}
       />
       <Tabs.Screen

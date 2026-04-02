@@ -16,13 +16,13 @@ import { useColorScheme } from "@/hooks/use-color-scheme"
 import { Colors } from "@/constants/theme"
 import { useAuth } from "@/contexts/auth-context"
 import {
-  getPartnersLedger,
-  addPartnersLedgerEntry,
-  updatePartnersLedgerEntry,
-  getPartners,
+  getFamilyLedger,
+  addFamilyLedgerEntry,
+  updateFamilyLedgerEntry,
+  getFamilyMembers,
 } from "@/services/firestore"
-import type { PartnersLedgerEntry, PartnerLedgerType, Partner } from "@/types"
-import { PARTNER_LEDGER_TYPE_LABELS } from "@/types"
+import type { FamilyLedgerEntry, FamilyLedgerType, FamilyMember } from "@/types"
+import { FAMILY_LEDGER_TYPE_LABELS } from "@/types"
 
 function formatINR(n: number): string {
   if (n >= 10000000) return "₹" + (n / 10000000).toFixed(1) + "Cr"
@@ -30,17 +30,17 @@ function formatINR(n: number): string {
   return "₹" + n.toLocaleString("en-IN")
 }
 
-export default function PartnersLedgerScreen() {
+export default function FamilyLedgerScreen() {
   const colorScheme = useColorScheme()
   const colors = Colors[colorScheme ?? "light"]
   const cardBg = colorScheme === "dark" ? "#1e1e1e" : "#f5f5f5"
   const { user, encryptionReady } = useAuth()
-  const [items, setItems] = useState<PartnersLedgerEntry[]>([])
-  const [partners, setPartnersList] = useState<Partner[]>([])
+  const [items, setItems] = useState<FamilyLedgerEntry[]>([])
+  const [familyMembers, setFamilyMembersList] = useState<FamilyMember[]>([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
-  const [formPartnerId, setFormPartnerId] = useState("")
-  const [formType, setFormType] = useState<PartnerLedgerType>("paid")
+  const [formMemberId, setFormMemberId] = useState("")
+  const [formType, setFormType] = useState<FamilyLedgerType>("paid")
   const [formAmount, setFormAmount] = useState("")
   const [formDescription, setFormDescription] = useState("")
   const [formDate, setFormDate] = useState("")
@@ -49,14 +49,14 @@ export default function PartnersLedgerScreen() {
   const load = useCallback(async () => {
     if (!user || !encryptionReady) return
     try {
-      const [ledger, partnersList] = await Promise.all([
-        getPartnersLedger(),
-        getPartners(),
+      const [ledger, members] = await Promise.all([
+        getFamilyLedger(),
+        getFamilyMembers(),
       ])
       setItems(ledger)
-      setPartnersList(partnersList)
+      setFamilyMembersList(members)
     } catch (err) {
-      console.error("Failed to load partners ledger:", err)
+      console.error("Failed to load family ledger:", err)
     } finally {
       setLoading(false)
     }
@@ -70,14 +70,14 @@ export default function PartnersLedgerScreen() {
   const netPosition = paid - received
   const unsettledTotal = unsettled.reduce((s, i) => s + i.amount, 0)
 
-  async function handleSettle(entry: PartnersLedgerEntry) {
+  async function handleSettle(entry: FamilyLedgerEntry) {
     Alert.alert("Settle", `Mark ₹${entry.amount.toLocaleString("en-IN")} as settled?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Settle",
         onPress: async () => {
           try {
-            await updatePartnersLedgerEntry(entry.id, {
+            await updateFamilyLedgerEntry(entry.id, {
               settled: true,
               settledDate: new Date().toISOString().split("T")[0],
             })
@@ -91,14 +91,14 @@ export default function PartnersLedgerScreen() {
   }
 
   async function handleAdd() {
-    if (!user || !formPartnerId || !formAmount || !formDescription || !formDate) return
+    if (!user || !formMemberId || !formAmount || !formDescription || !formDate) return
     setSaving(true)
     try {
-      const partner = partners.find((p) => p.id === formPartnerId)
-      await addPartnersLedgerEntry({
+      const member = familyMembers.find((m) => m.id === formMemberId)
+      await addFamilyLedgerEntry({
         userId: user.uid,
-        partnerId: formPartnerId,
-        partnerName: partner?.name,
+        familyMemberId: formMemberId,
+        familyMemberName: member?.name,
         type: formType,
         amount: parseFloat(formAmount),
         description: formDescription,
@@ -106,7 +106,7 @@ export default function PartnersLedgerScreen() {
         settled: false,
       })
       setShowAdd(false)
-      setFormPartnerId(""); setFormAmount(""); setFormDescription(""); setFormDate("")
+      setFormMemberId(""); setFormAmount(""); setFormDescription(""); setFormDate("")
       await load()
     } catch (err: any) {
       Alert.alert("Error", err.message ?? "Failed to add")
@@ -125,7 +125,7 @@ export default function PartnersLedgerScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.contentContainer}>
-      <Text style={[styles.title, { color: colors.text }]}>Partners Ledger</Text>
+      <Text style={[styles.title, { color: colors.text }]}>Family Ledger</Text>
 
       <View style={styles.summaryRow}>
         <View style={[styles.summaryCard, { backgroundColor: cardBg }]}>
@@ -153,7 +153,7 @@ export default function PartnersLedgerScreen() {
               </Text>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.cardName, { color: colors.text }]}>
-                  {item.partnerName ?? "Unknown"} — {PARTNER_LEDGER_TYPE_LABELS[item.type]}
+                  {item.familyMemberName ?? "Unknown"} — {FAMILY_LEDGER_TYPE_LABELS[item.type]}
                 </Text>
                 <Text style={[styles.cardSub, { color: colors.icon }]}>
                   {item.description} • {item.date}
@@ -184,18 +184,18 @@ export default function PartnersLedgerScreen() {
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>Add Ledger Entry</Text>
-            <Text style={[styles.modalLabel, { color: colors.text }]}>Partner</Text>
+            <Text style={[styles.modalLabel, { color: colors.text }]}>Family Member</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
-              {partners.map((p) => (
-                <TouchableOpacity key={p.id} style={[styles.typeChip, { backgroundColor: formPartnerId === p.id ? colors.tint : cardBg, borderColor: formPartnerId === p.id ? "transparent" : colors.icon + "40" }]} onPress={() => setFormPartnerId(p.id)}>
-                  <Text style={{ color: formPartnerId === p.id ? "#fff" : colors.text, fontSize: 13 }}>{p.name}</Text>
+              {familyMembers.map((m) => (
+                <TouchableOpacity key={m.id} style={[styles.typeChip, { backgroundColor: formMemberId === m.id ? colors.tint : cardBg, borderColor: formMemberId === m.id ? "transparent" : colors.icon + "40" }]} onPress={() => setFormMemberId(m.id)}>
+                  <Text style={{ color: formMemberId === m.id ? "#fff" : colors.text, fontSize: 13 }}>{m.name}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
             <Text style={[styles.modalLabel, { color: colors.text }]}>Type</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
-              {Object.entries(PARTNER_LEDGER_TYPE_LABELS).map(([val, label]) => (
-                <TouchableOpacity key={val} style={[styles.typeChip, { backgroundColor: formType === val ? colors.tint : cardBg, borderColor: formType === val ? "transparent" : colors.icon + "40" }]} onPress={() => setFormType(val as PartnerLedgerType)}>
+              {Object.entries(FAMILY_LEDGER_TYPE_LABELS).map(([val, label]) => (
+                <TouchableOpacity key={val} style={[styles.typeChip, { backgroundColor: formType === val ? colors.tint : cardBg, borderColor: formType === val ? "transparent" : colors.icon + "40" }]} onPress={() => setFormType(val as FamilyLedgerType)}>
                   <Text style={{ color: formType === val ? "#fff" : colors.text, fontSize: 13 }}>{label}</Text>
                 </TouchableOpacity>
               ))}
@@ -207,7 +207,7 @@ export default function PartnersLedgerScreen() {
               <TouchableOpacity style={[styles.modalCancel, { borderColor: colors.icon }]} onPress={() => setShowAdd(false)}>
                 <Text style={{ color: colors.text }}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalSave, { backgroundColor: colors.tint, opacity: saving || !formPartnerId || !formAmount || !formDescription || !formDate ? 0.5 : 1 }]} onPress={handleAdd} disabled={saving || !formPartnerId || !formAmount || !formDescription || !formDate}>
+              <TouchableOpacity style={[styles.modalSave, { backgroundColor: colors.tint, opacity: saving || !formMemberId || !formAmount || !formDescription || !formDate ? 0.5 : 1 }]} onPress={handleAdd} disabled={saving || !formMemberId || !formAmount || !formDescription || !formDate}>
                 <Text style={{ color: "#fff", fontWeight: "600" }}>{saving ? "Saving..." : "Add"}</Text>
               </TouchableOpacity>
             </View>

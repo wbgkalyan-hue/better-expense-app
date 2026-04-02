@@ -15,9 +15,9 @@ import type {
   CreditCard,
   Loan,
   Friend,
-  Partner,
+  FamilyMember,
   FriendsLedgerEntry,
-  PartnersLedgerEntry,
+  FamilyLedgerEntry,
   Property,
 } from "@/types"
 
@@ -42,10 +42,10 @@ const RE_INVESTMENT_SENSITIVE = ["purchasePrice", "currentValue", "monthlyRent",
 const INSURANCE_SENSITIVE = ["policyNumber", "premium", "coverageAmount"]
 const CREDIT_CARD_SENSITIVE = ["last4", "creditLimit", "outstandingBalance", "minPayment", "interestRate"]
 const LOAN_SENSITIVE = ["principalAmount", "outstandingAmount", "interestRate", "emiAmount"]
-const FRIEND_SENSITIVE = ["name", "phone", "email"]
-const PARTNER_SENSITIVE = ["name", "company", "phone", "email"]
+const FRIEND_SENSITIVE = ["name", "phone", "email", "address"]
+const FAMILY_MEMBER_SENSITIVE = ["name", "phone", "email"]
 const FRIENDS_LEDGER_SENSITIVE = ["amount", "description"]
-const PARTNERS_LEDGER_SENSITIVE = ["amount", "description"]
+const FAMILY_LEDGER_SENSITIVE = ["amount", "description"]
 const PROPERTY_SENSITIVE = ["address", "currentValue", "purchasePrice", "monthlyRent", "monthlyEmi"]
 
 // ---------------------------------------------------------------------------
@@ -549,26 +549,26 @@ export async function deleteFriend(id: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Partners
+// Family Members
 // ---------------------------------------------------------------------------
 
-export async function getPartners(): Promise<Partner[]> {
+export async function getFamilyMembers(): Promise<FamilyMember[]> {
   const uid = getUserId()
   const snapshot = await firestore()
-    .collection("partners")
+    .collection("family_members")
     .where("userId", "==", uid)
     .get()
   return snapshot.docs
-    .map((doc) => decryptDoc<Partner>(rawDoc(doc), PARTNER_SENSITIVE))
-    .filter((r): r is Partner => r !== null)
+    .map((doc) => decryptDoc<FamilyMember>(rawDoc(doc), FAMILY_MEMBER_SENSITIVE))
+    .filter((r): r is FamilyMember => r !== null)
 }
 
-export async function addPartner(
-  data: Omit<Partner, "id" | "createdAt" | "updatedAt">,
+export async function addFamilyMember(
+  data: Omit<FamilyMember, "id" | "createdAt" | "updatedAt">,
 ): Promise<string> {
-  const payload = encryptDoc({ ...data } as Record<string, unknown>, PARTNER_SENSITIVE)
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, FAMILY_MEMBER_SENSITIVE)
   const ref = await firestore()
-    .collection("partners")
+    .collection("family_members")
     .add({
       ...payload,
       createdAt: firestore.FieldValue.serverTimestamp(),
@@ -577,14 +577,14 @@ export async function addPartner(
   return ref.id
 }
 
-export async function updatePartner(
+export async function updateFamilyMember(
   id: string,
-  data: Partial<Partner>,
+  data: Partial<FamilyMember>,
 ): Promise<void> {
-  const payload = encryptDoc({ ...data } as Record<string, unknown>, PARTNER_SENSITIVE)
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, FAMILY_MEMBER_SENSITIVE)
   if (isEncryptionReady()) (payload as Record<string, unknown>)._encrypted = true
   await firestore()
-    .collection("partners")
+    .collection("family_members")
     .doc(id)
     .update({
       ...payload,
@@ -592,8 +592,8 @@ export async function updatePartner(
     })
 }
 
-export async function deletePartner(id: string): Promise<void> {
-  await firestore().collection("partners").doc(id).delete()
+export async function deleteFamilyMember(id: string): Promise<void> {
+  await firestore().collection("family_members").doc(id).delete()
 }
 
 // ---------------------------------------------------------------------------
@@ -646,27 +646,27 @@ export async function deleteFriendsLedgerEntry(id: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Partners Ledger
+// Family Ledger
 // ---------------------------------------------------------------------------
 
-export async function getPartnersLedger(): Promise<PartnersLedgerEntry[]> {
+export async function getFamilyLedger(): Promise<FamilyLedgerEntry[]> {
   const uid = getUserId()
   const snapshot = await firestore()
-    .collection("partners_ledger")
+    .collection("family_ledger")
     .where("userId", "==", uid)
     .orderBy("date", "desc")
     .get()
   return snapshot.docs
-    .map((doc) => decryptDoc<PartnersLedgerEntry>(rawDoc(doc), PARTNERS_LEDGER_SENSITIVE))
-    .filter((r): r is PartnersLedgerEntry => r !== null)
+    .map((doc) => decryptDoc<FamilyLedgerEntry>(rawDoc(doc), FAMILY_LEDGER_SENSITIVE))
+    .filter((r): r is FamilyLedgerEntry => r !== null)
 }
 
-export async function addPartnersLedgerEntry(
-  data: Omit<PartnersLedgerEntry, "id" | "createdAt" | "updatedAt">,
+export async function addFamilyLedgerEntry(
+  data: Omit<FamilyLedgerEntry, "id" | "createdAt" | "updatedAt">,
 ): Promise<string> {
-  const payload = encryptDoc({ ...data } as Record<string, unknown>, PARTNERS_LEDGER_SENSITIVE)
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, FAMILY_LEDGER_SENSITIVE)
   const ref = await firestore()
-    .collection("partners_ledger")
+    .collection("family_ledger")
     .add({
       ...payload,
       createdAt: firestore.FieldValue.serverTimestamp(),
@@ -675,14 +675,14 @@ export async function addPartnersLedgerEntry(
   return ref.id
 }
 
-export async function updatePartnersLedgerEntry(
+export async function updateFamilyLedgerEntry(
   id: string,
-  data: Partial<PartnersLedgerEntry>,
+  data: Partial<FamilyLedgerEntry>,
 ): Promise<void> {
-  const payload = encryptDoc({ ...data } as Record<string, unknown>, PARTNERS_LEDGER_SENSITIVE)
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, FAMILY_LEDGER_SENSITIVE)
   if (isEncryptionReady()) (payload as Record<string, unknown>)._encrypted = true
   await firestore()
-    .collection("partners_ledger")
+    .collection("family_ledger")
     .doc(id)
     .update({
       ...payload,
@@ -690,8 +690,8 @@ export async function updatePartnersLedgerEntry(
     })
 }
 
-export async function deletePartnersLedgerEntry(id: string): Promise<void> {
-  await firestore().collection("partners_ledger").doc(id).delete()
+export async function deleteFamilyLedgerEntry(id: string): Promise<void> {
+  await firestore().collection("family_ledger").doc(id).delete()
 }
 
 // ---------------------------------------------------------------------------

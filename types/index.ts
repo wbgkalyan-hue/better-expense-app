@@ -37,15 +37,16 @@ export type { CreditCard } from "./credit-card"
 export type { Loan, LoanType } from "./loan"
 export { LOAN_TYPE_LABELS } from "./loan"
 
-export type { Friend, Partner } from "./entity"
+export type { Friend, FamilyMember, FriendRelationship, FamilyRelationship } from "./entity"
+export { FRIEND_RELATIONSHIP_LABELS, FAMILY_RELATIONSHIP_LABELS } from "./entity"
 
 export type {
   FriendsLedgerEntry,
   LedgerEntryType,
-  PartnersLedgerEntry,
-  PartnerLedgerType,
+  FamilyLedgerEntry,
+  FamilyLedgerType,
 } from "./ledger"
-export { LEDGER_ENTRY_TYPE_LABELS, PARTNER_LEDGER_TYPE_LABELS } from "./ledger"
+export { LEDGER_ENTRY_TYPE_LABELS, FAMILY_LEDGER_TYPE_LABELS } from "./ledger"
 
 export type { Property, PropertyType, PropertyCategory } from "./property"
 export { PROPERTY_TYPE_LABELS, PROPERTY_CATEGORY_LABELS } from "./property"
