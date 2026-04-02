@@ -1,4 +1,5 @@
 import { firestore, auth } from "./firebase"
+import { encryptValue, decryptValue, isEncryptionReady } from "@/services/encryption"
 import type { FirebaseFirestoreTypes } from "@react-native-firebase/firestore"
 import type {
   Transaction,
@@ -13,8 +14,57 @@ import type {
 
 type FirestoreDoc = FirebaseFirestoreTypes.DocumentSnapshot
 
-function docToData<T>(doc: FirestoreDoc): T {
-  return { id: doc.id, ...doc.data() } as T
+// ---------------------------------------------------------------------------
+// Sensitive field definitions (mirror dashboard exactly)
+// ---------------------------------------------------------------------------
+
+const TRANSACTION_SENSITIVE = ["amount", "description", "merchant", "rawNotification"]
+const BROKER_SENSITIVE = ["currentValue", "totalInvested", "returns", "returnsPercent"]
+const INVESTMENT_TX_SENSITIVE = ["amount", "note", "rawNotification"]
+const GOAL_SENSITIVE = ["targetAmount", "currentAmount", "description"]
+const BANK_SENSITIVE = ["balance", "interestRate"]
+const ASSET_SENSITIVE = ["currentValue", "purchaseValue", "description"]
+
+// ---------------------------------------------------------------------------
+// Generic encrypt / decrypt helpers
+// ---------------------------------------------------------------------------
+
+function encryptDoc(
+  data: Record<string, unknown>,
+  sensitiveFields: string[],
+): Record<string, unknown> {
+  if (!isEncryptionReady()) return data
+  const result: Record<string, unknown> = { _encrypted: true }
+  for (const [key, value] of Object.entries(data)) {
+    result[key] = sensitiveFields.includes(key) && value != null
+      ? encryptValue(value)
+      : value
+  }
+  return result
+}
+
+function decryptDoc<T>(
+  raw: Record<string, unknown>,
+  sensitiveFields: string[],
+): T | null {
+  if (!raw._encrypted) return raw as T
+  if (!isEncryptionReady()) return null
+  const result = { ...raw }
+  for (const field of sensitiveFields) {
+    if (result[field] && typeof result[field] === "string") {
+      try {
+        result[field] = decryptValue(result[field] as string)
+      } catch {
+        return null
+      }
+    }
+  }
+  delete result._encrypted
+  return result as T
+}
+
+function rawDoc<T>(doc: FirestoreDoc): Record<string, unknown> {
+  return { id: doc.id, ...doc.data() } as Record<string, unknown>
 }
 
 function getUserId(): string {
@@ -34,16 +84,19 @@ export async function getTransactions(): Promise<Transaction[]> {
     .where("userId", "==", uid)
     .orderBy("date", "desc")
     .get()
-  return snapshot.docs.map(docToData<Transaction>)
+  return snapshot.docs
+    .map((doc) => decryptDoc<Transaction>(rawDoc(doc), TRANSACTION_SENSITIVE))
+    .filter((r): r is Transaction => r !== null)
 }
 
 export async function addTransaction(
   data: Omit<Transaction, "id" | "createdAt" | "updatedAt">,
 ): Promise<string> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, TRANSACTION_SENSITIVE)
   const ref = await firestore()
     .collection("transactions")
     .add({
-      ...data,
+      ...payload,
       createdAt: firestore.FieldValue.serverTimestamp(),
       updatedAt: firestore.FieldValue.serverTimestamp(),
     })
@@ -61,16 +114,19 @@ export async function getBrokerAccounts(): Promise<BrokerAccount[]> {
     .where("userId", "==", uid)
     .orderBy("createdAt", "desc")
     .get()
-  return snapshot.docs.map(docToData<BrokerAccount>)
+  return snapshot.docs
+    .map((doc) => decryptDoc<BrokerAccount>(rawDoc(doc), BROKER_SENSITIVE))
+    .filter((r): r is BrokerAccount => r !== null)
 }
 
 export async function addBrokerAccount(
   data: Omit<BrokerAccount, "id" | "createdAt" | "updatedAt">,
 ): Promise<string> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, BROKER_SENSITIVE)
   const ref = await firestore()
     .collection("broker_accounts")
     .add({
-      ...data,
+      ...payload,
       createdAt: firestore.FieldValue.serverTimestamp(),
       updatedAt: firestore.FieldValue.serverTimestamp(),
     })
@@ -95,16 +151,19 @@ export async function getInvestmentTransactions(
   }
 
   const snapshot = await query.get()
-  return snapshot.docs.map(docToData<InvestmentTransaction>)
+  return snapshot.docs
+    .map((doc) => decryptDoc<InvestmentTransaction>(rawDoc(doc), INVESTMENT_TX_SENSITIVE))
+    .filter((r): r is InvestmentTransaction => r !== null)
 }
 
 export async function addInvestmentTransaction(
   data: Omit<InvestmentTransaction, "id" | "createdAt">,
 ): Promise<string> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, INVESTMENT_TX_SENSITIVE)
   const ref = await firestore()
     .collection("investment_transactions")
     .add({
-      ...data,
+      ...payload,
       createdAt: firestore.FieldValue.serverTimestamp(),
     })
   return ref.id
@@ -121,16 +180,19 @@ export async function getGoals(): Promise<Goal[]> {
     .where("userId", "==", uid)
     .orderBy("priority", "asc")
     .get()
-  return snapshot.docs.map(docToData<Goal>)
+  return snapshot.docs
+    .map((doc) => decryptDoc<Goal>(rawDoc(doc), GOAL_SENSITIVE))
+    .filter((r): r is Goal => r !== null)
 }
 
 export async function addGoal(
   data: Omit<Goal, "id" | "createdAt" | "updatedAt">,
 ): Promise<string> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, GOAL_SENSITIVE)
   const ref = await firestore()
     .collection("goals")
     .add({
-      ...data,
+      ...payload,
       createdAt: firestore.FieldValue.serverTimestamp(),
       updatedAt: firestore.FieldValue.serverTimestamp(),
     })
@@ -141,11 +203,13 @@ export async function updateGoal(
   id: string,
   data: Partial<Goal>,
 ): Promise<void> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, GOAL_SENSITIVE)
+  if (isEncryptionReady()) (payload as Record<string, unknown>)._encrypted = true
   await firestore()
     .collection("goals")
     .doc(id)
     .update({
-      ...data,
+      ...payload,
       updatedAt: firestore.FieldValue.serverTimestamp(),
     })
 }
@@ -160,7 +224,7 @@ export async function getNotificationPatterns(): Promise<NotificationPattern[]> 
     .collection("notification_patterns")
     .where("userId", "==", uid)
     .get()
-  return snapshot.docs.map(docToData<NotificationPattern>)
+  return snapshot.docs.map((doc) => rawDoc(doc) as NotificationPattern)
 }
 
 export async function addNotificationPattern(
@@ -186,7 +250,9 @@ export async function getBankAccounts(): Promise<BankAccount[]> {
     .collection("bank_accounts")
     .where("userId", "==", uid)
     .get()
-  return snapshot.docs.map(docToData<BankAccount>)
+  return snapshot.docs
+    .map((doc) => decryptDoc<BankAccount>(rawDoc(doc), BANK_SENSITIVE))
+    .filter((r): r is BankAccount => r !== null)
 }
 
 export async function getAssets(): Promise<Asset[]> {
@@ -195,7 +261,9 @@ export async function getAssets(): Promise<Asset[]> {
     .collection("assets")
     .where("userId", "==", uid)
     .get()
-  return snapshot.docs.map(docToData<Asset>)
+  return snapshot.docs
+    .map((doc) => decryptDoc<Asset>(rawDoc(doc), ASSET_SENSITIVE))
+    .filter((r): r is Asset => r !== null)
 }
 
 export async function getNetworthSnapshots(): Promise<NetworthSnapshot[]> {
@@ -205,5 +273,11 @@ export async function getNetworthSnapshots(): Promise<NetworthSnapshot[]> {
     .where("userId", "==", uid)
     .orderBy("date", "desc")
     .get()
-  return snapshot.docs.map(docToData<NetworthSnapshot>)
+  // NetworthSnapshots are written by the dashboard only — decrypt with its sensitive fields
+  const NETWORTH_SENSITIVE = [
+    "totalBank", "totalInvestments", "totalAssets", "totalDebts", "networth", "liquidFunds",
+  ]
+  return snapshot.docs
+    .map((doc) => decryptDoc<NetworthSnapshot>(rawDoc(doc), NETWORTH_SENSITIVE))
+    .filter((r): r is NetworthSnapshot => r !== null)
 }
