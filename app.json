@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "android": {
       "googleServicesFile": "./google-services.json",
-      "package": "com.betterexpenses.app",
+      "package": "com.webuild.betterexpense",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
