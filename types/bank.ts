@@ -5,7 +5,7 @@ export interface BankAccount {
   userId: string
   name: string
   bankName: string
-  type: BankAccountType
+  type: BankAccountType | (string & {})
   balance: number
   interestRate?: number
   maturityDate?: string

@@ -30,10 +30,14 @@ const mockAdd = vi.fn(async (data: Record<string, unknown>) => {
 
 const mockFirestoreInstance = {
   collection: vi.fn(() => ({
-    where: vi.fn(() => ({
-      orderBy: vi.fn(() => ({ get: mockGet })),
-      get: mockGet,
-    })),
+    where: vi.fn(function () {
+      const chain = {
+        orderBy: vi.fn(() => ({ get: mockGet })),
+        where: vi.fn(() => chain),
+        get: mockGet,
+      }
+      return chain
+    }),
     add: mockAdd,
     doc: vi.fn(() => ({
       delete: mockDelete,
@@ -89,6 +93,9 @@ import {
   addProperty,
   getProperties,
   deleteProperty,
+  addCustomCategory,
+  getCustomCategories,
+  deleteCustomCategory,
 } from "@/services/firestore"
 
 // -------------------------------------------------------------------
@@ -531,6 +538,54 @@ describe("Properties", () => {
 
   it("deleteProperty calls delete", async () => {
     await deleteProperty("prop1")
+    expect(mockDelete).toHaveBeenCalled()
+  })
+})
+
+// =====================================================================
+// Custom Categories (no encryption)
+// =====================================================================
+describe("Firestore — Custom Categories", () => {
+  beforeEach(() => {
+    mockDocs.clear()
+    addDocCounter = 0
+    vi.clearAllMocks()
+  })
+
+  it("addCustomCategory stores group, label, value", async () => {
+    await addCustomCategory({
+      userId: "u1",
+      group: "expense_category",
+      label: "Groceries",
+      value: "groceries",
+    })
+    expect(mockAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u1",
+        group: "expense_category",
+        label: "Groceries",
+        value: "groceries",
+      })
+    )
+  })
+
+  it("getCustomCategories returns stored categories", async () => {
+    mockDocs.set("cc1", {
+      userId: "u1",
+      group: "expense_category",
+      label: "Groceries",
+      value: "groceries",
+      createdAt: "2024-01-01",
+      updatedAt: "2024-01-01",
+    })
+    const items = await getCustomCategories("u1", "expense_category")
+    expect(items.length).toBe(1)
+    expect(items[0].label).toBe("Groceries")
+    expect(items[0].group).toBe("expense_category")
+  })
+
+  it("deleteCustomCategory calls delete", async () => {
+    await deleteCustomCategory("cc1")
     expect(mockDelete).toHaveBeenCalled()
   })
 })

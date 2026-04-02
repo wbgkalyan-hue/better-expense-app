@@ -1,5 +1,5 @@
 /** Category of insurance policy. */
-export type InsuranceType = "life" | "health" | "vehicle" | "property" | "term" | "other"
+export type InsuranceType = "life" | "health" | "vehicle" | "property" | "term" | "other" | (string & {})
 
 /** Human-readable labels for {@link InsuranceType}. */
 export const INSURANCE_TYPE_LABELS: Record<InsuranceType, string> = {

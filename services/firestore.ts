@@ -741,3 +741,43 @@ export async function updateProperty(
 export async function deleteProperty(id: string): Promise<void> {
   await firestore().collection("properties").doc(id).delete()
 }
+
+// ---------------------------------------------------------------------------
+// Custom Categories
+// ---------------------------------------------------------------------------
+
+export async function getCustomCategories(
+  userId: string,
+  group?: import("../types").CategoryGroup,
+): Promise<import("../types").CustomCategory[]> {
+  let query = firestore()
+    .collection("custom_categories")
+    .where("userId", "==", userId)
+
+  if (group) {
+    query = query.where("group", "==", group)
+  }
+
+  const snapshot = await query.get()
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as import("../types").CustomCategory[]
+}
+
+export async function addCustomCategory(
+  data: Omit<import("../types").CustomCategory, "id" | "createdAt" | "updatedAt">,
+): Promise<string> {
+  const ref = await firestore()
+    .collection("custom_categories")
+    .add({
+      ...data,
+      createdAt: firestore.FieldValue.serverTimestamp(),
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+  return ref.id
+}
+
+export async function deleteCustomCategory(id: string): Promise<void> {
+  await firestore().collection("custom_categories").doc(id).delete()
+}

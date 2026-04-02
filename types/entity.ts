@@ -1,5 +1,5 @@
 /** Predefined relationship categories for a friend. */
-export type FriendRelationship = "colleague" | "neighbor" | "classmate" | "other"
+export type FriendRelationship = "colleague" | "neighbor" | "classmate" | "other" | (string & {})
 
 /** Human-readable labels for {@link FriendRelationship}. */
 export const FRIEND_RELATIONSHIP_LABELS: Record<FriendRelationship, string> = {
@@ -38,6 +38,7 @@ export type FamilyRelationship =
   | "brother"
   | "sister"
   | "other"
+  | (string & {})
 
 /** Human-readable labels for {@link FamilyRelationship}. */
 export const FAMILY_RELATIONSHIP_LABELS: Record<FamilyRelationship, string> = {

@@ -9,7 +9,7 @@ export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
 }
 
 /** Usage category of a property. */
-export type PropertyCategory = "residential" | "commercial" | "land" | "other"
+export type PropertyCategory = "residential" | "commercial" | "land" | "other" | (string & {})
 
 /** Human-readable labels for {@link PropertyCategory}. */
 export const PROPERTY_CATEGORY_LABELS: Record<PropertyCategory, string> = {

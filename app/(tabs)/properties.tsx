@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { getProperties, addProperty } from "@/services/firestore"
 import type { Property, PropertyType, PropertyCategory } from "@/types"
 import { PROPERTY_TYPE_LABELS, PROPERTY_CATEGORY_LABELS } from "@/types"
+import { CategoryChipPicker } from "@/components/category-chip-picker"
 
 const CATEGORY_ICONS: Record<string, string> = {
   residential: "🏠",
@@ -166,13 +167,7 @@ export default function PropertiesScreen() {
               ))}
             </ScrollView>
             <Text style={[styles.modalLabel, { color: colors.text }]}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
-              {Object.entries(PROPERTY_CATEGORY_LABELS).map(([val, label]) => (
-                <TouchableOpacity key={val} style={[styles.typeChip, { backgroundColor: formCategory === val ? colors.tint : cardBg, borderColor: formCategory === val ? "transparent" : colors.icon + "40" }]} onPress={() => setFormCategory(val as PropertyCategory)}>
-                  <Text style={{ color: formCategory === val ? "#fff" : colors.text, fontSize: 13 }}>{CATEGORY_ICONS[val] ?? "📦"} {label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <CategoryChipPicker group="property_category" labels={PROPERTY_CATEGORY_LABELS} value={formCategory} onValueChange={setFormCategory} colors={colors} cardBg={cardBg} />
             <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Current Value (₹, optional)" placeholderTextColor={colors.icon} keyboardType="numeric" value={formCurrentValue} onChangeText={setFormCurrentValue} />
             <View style={{ flexDirection: "row", gap: 12 }}>
               <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Monthly Rent (₹)" placeholderTextColor={colors.icon} keyboardType="numeric" value={formMonthlyRent} onChangeText={setFormMonthlyRent} />

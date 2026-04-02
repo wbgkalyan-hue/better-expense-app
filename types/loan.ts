@@ -1,5 +1,5 @@
 /** Category of loan. */
-export type LoanType = "home" | "car" | "personal" | "education" | "business" | "other"
+export type LoanType = "home" | "car" | "personal" | "education" | "business" | "other" | (string & {})
 
 /** Human-readable labels for {@link LoanType}. */
 export const LOAN_TYPE_LABELS: Record<LoanType, string> = {

@@ -17,6 +17,8 @@ import {
   BANK_ACCOUNT_TYPE_LABELS,
   ASSET_TYPE_LABELS,
 } from "@/types/categories"
+import { CATEGORY_GROUP_LABELS } from "@/types/custom-category"
+import type { CategoryGroup, CustomCategory } from "@/types/custom-category"
 
 describe("Categories — Enum Completeness", () => {
   it("ExpenseCategory has 13 values", () => {
@@ -93,5 +95,36 @@ describe("Categories — Enum Value Stability", () => {
 
   it("AssetType.PROPERTY equals 'property'", () => {
     expect(AssetType.PROPERTY).toBe("property")
+  })
+})
+
+// =====================================================================
+// Custom Categories
+// =====================================================================
+describe("Category Group Labels", () => {
+  it("has 10 category groups", () => {
+    expect(Object.keys(CATEGORY_GROUP_LABELS).length).toBe(10)
+  })
+
+  it("every group has a non-empty label", () => {
+    for (const [, label] of Object.entries(CATEGORY_GROUP_LABELS)) {
+      expect(label.length).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe("Type shape — CustomCategory", () => {
+  it("accepts a well-formed CustomCategory", () => {
+    const cc: CustomCategory = {
+      id: "cc1",
+      userId: "u1",
+      group: "expense_category",
+      label: "Groceries",
+      value: "groceries",
+      createdAt: "2024-01-01",
+      updatedAt: "2024-01-01",
+    }
+    expect(cc.group).toBe("expense_category")
+    expect(cc.value).toBe("groceries")
   })
 })

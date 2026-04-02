@@ -1,5 +1,5 @@
 /** Category of real-estate investment property. */
-export type RealEstateInvestmentType = "residential" | "commercial" | "land" | "other"
+export type RealEstateInvestmentType = "residential" | "commercial" | "land" | "other" | (string & {})
 
 /** Human-readable labels for {@link RealEstateInvestmentType}. */
 export const RE_INVESTMENT_TYPE_LABELS: Record<RealEstateInvestmentType, string> = {

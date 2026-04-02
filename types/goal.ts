@@ -4,7 +4,7 @@ export interface Goal {
   id: string
   userId: string
   title: string
-  type: GoalType
+  type: GoalType | (string & {})
   targetAmount: number
   currentAmount: number
   priority: number

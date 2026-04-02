@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { getLoans, addLoan } from "@/services/firestore"
 import type { Loan, LoanType } from "@/types"
 import { LOAN_TYPE_LABELS } from "@/types"
+import { CategoryChipPicker } from "@/components/category-chip-picker"
 
 const TYPE_COLORS: Record<string, string> = {
   home: "#3b82f6",
@@ -167,13 +168,7 @@ export default function LoansScreen() {
             <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Loan Name" placeholderTextColor={colors.icon} value={formName} onChangeText={setFormName} />
             <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Lender" placeholderTextColor={colors.icon} value={formLender} onChangeText={setFormLender} />
             <Text style={[styles.modalLabel, { color: colors.text }]}>Type</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
-              {Object.entries(LOAN_TYPE_LABELS).map(([val, label]) => (
-                <TouchableOpacity key={val} style={[styles.typeChip, { backgroundColor: formType === val ? (TYPE_COLORS[val] ?? colors.tint) : cardBg, borderColor: formType === val ? "transparent" : colors.icon + "40" }]} onPress={() => setFormType(val as LoanType)}>
-                  <Text style={{ color: formType === val ? "#fff" : colors.text, fontSize: 13 }}>{TYPE_ICONS[val] ?? "📦"} {label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <CategoryChipPicker group="loan_type" labels={LOAN_TYPE_LABELS} value={formType} onValueChange={(val) => setFormType(val as LoanType)} colors={colors} cardBg={cardBg} />
             <View style={{ flexDirection: "row", gap: 12 }}>
               <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Principal (₹)" placeholderTextColor={colors.icon} keyboardType="numeric" value={formPrincipal} onChangeText={setFormPrincipal} />
               <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Outstanding (₹)" placeholderTextColor={colors.icon} keyboardType="numeric" value={formOutstanding} onChangeText={setFormOutstanding} />

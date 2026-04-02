@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { getFriends, addFriend } from "@/services/firestore"
 import type { Friend, FriendRelationship } from "@/types"
 import { FRIEND_RELATIONSHIP_LABELS } from "@/types"
+import { CategoryChipPicker } from "@/components/category-chip-picker"
 
 export default function FriendsScreen() {
   const colorScheme = useColorScheme()
@@ -133,13 +134,7 @@ export default function FriendsScreen() {
             <Text style={[styles.modalTitle, { color: colors.text }]}>Add Friend</Text>
             <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Name" placeholderTextColor={colors.icon} value={formName} onChangeText={setFormName} />
             <Text style={[styles.modalLabel, { color: colors.text }]}>Relationship</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
-              {Object.entries(FRIEND_RELATIONSHIP_LABELS).map(([val, label]) => (
-                <TouchableOpacity key={val} style={[styles.typeChip, { backgroundColor: formRelationship === val ? colors.tint : cardBg, borderColor: formRelationship === val ? "transparent" : colors.icon + "40" }]} onPress={() => setFormRelationship(val as FriendRelationship)}>
-                  <Text style={{ color: formRelationship === val ? "#fff" : colors.text, fontSize: 13 }}>{label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <CategoryChipPicker group="friend_relationship" labels={FRIEND_RELATIONSHIP_LABELS} value={formRelationship} onValueChange={setFormRelationship} colors={colors} cardBg={cardBg} />
             <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Phone (optional)" placeholderTextColor={colors.icon} keyboardType="phone-pad" value={formPhone} onChangeText={setFormPhone} />
             <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Email (optional)" placeholderTextColor={colors.icon} keyboardType="email-address" value={formEmail} onChangeText={setFormEmail} />
             <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Tags (comma-separated, optional)" placeholderTextColor={colors.icon} value={formTags} onChangeText={setFormTags} />

@@ -18,6 +18,7 @@ import { AssetType, ASSET_TYPE_LABELS } from "@/types"
 import { useAuth } from "@/contexts/auth-context"
 import { getLocalAssets, addLocalAsset } from "@/services/database"
 import type { Asset } from "@/types"
+import { CategoryChipPicker } from "@/components/category-chip-picker"
 
 const TYPE_COLORS: Record<string, string> = {
   property: "#3b82f6",
@@ -196,25 +197,7 @@ export default function AssetsScreen() {
             />
 
             <Text style={[styles.modalLabel, { color: colors.text }]}>Type</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
-              {Object.entries(ASSET_TYPE_LABELS).map(([val, label]) => (
-                <TouchableOpacity
-                  key={val}
-                  style={[
-                    styles.typeChip,
-                    {
-                      backgroundColor: formType === val ? (TYPE_COLORS[val] ?? colors.tint) : cardBg,
-                      borderColor: formType === val ? "transparent" : colors.icon + "40",
-                    },
-                  ]}
-                  onPress={() => setFormType(val as AssetType)}
-                >
-                  <Text style={{ color: formType === val ? "#fff" : colors.text, fontSize: 13 }}>
-                    {TYPE_ICONS[val] ?? "📦"} {label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <CategoryChipPicker group="asset_type" labels={ASSET_TYPE_LABELS} value={formType} onValueChange={(val) => setFormType(val as AssetType)} colors={colors} cardBg={cardBg} />
 
             <View style={{ flexDirection: "row", gap: 12 }}>
               <TextInput

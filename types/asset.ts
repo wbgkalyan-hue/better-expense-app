@@ -4,7 +4,7 @@ export interface Asset {
   id: string
   userId: string
   name: string
-  type: AssetType
+  type: AssetType | (string & {})
   currentValue: number
   purchaseValue: number
   purchaseDate?: string

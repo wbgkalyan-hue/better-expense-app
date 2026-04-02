@@ -50,3 +50,6 @@ export { LEDGER_ENTRY_TYPE_LABELS, FAMILY_LEDGER_TYPE_LABELS } from "./ledger"
 
 export type { Property, PropertyType, PropertyCategory } from "./property"
 export { PROPERTY_TYPE_LABELS, PROPERTY_CATEGORY_LABELS } from "./property"
+
+export type { CustomCategory, CategoryGroup } from "./custom-category"
+export { CATEGORY_GROUP_LABELS } from "./custom-category"

@@ -8,7 +8,7 @@ export interface Transaction {
   userId: string
   amount: number
   type: TransactionType
-  category: ExpenseCategory | IncomeCategory
+  category: ExpenseCategory | IncomeCategory | (string & {})
   description: string
   merchant?: string
   date: string

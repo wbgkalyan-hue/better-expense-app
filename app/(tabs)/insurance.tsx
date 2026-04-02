@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { getInsurancePolicies, addInsurancePolicy } from "@/services/firestore"
 import type { InsurancePolicy, InsuranceType, InsuranceFrequency } from "@/types"
 import { INSURANCE_TYPE_LABELS, INSURANCE_FREQUENCY_LABELS } from "@/types"
+import { CategoryChipPicker } from "@/components/category-chip-picker"
 
 const TYPE_COLORS: Record<string, string> = {
   life: "#3b82f6",
@@ -171,13 +172,7 @@ export default function InsuranceScreen() {
             <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Policy Name" placeholderTextColor={colors.icon} value={formName} onChangeText={setFormName} />
             <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Insurer" placeholderTextColor={colors.icon} value={formInsurer} onChangeText={setFormInsurer} />
             <Text style={[styles.modalLabel, { color: colors.text }]}>Type</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
-              {Object.entries(INSURANCE_TYPE_LABELS).map(([val, label]) => (
-                <TouchableOpacity key={val} style={[styles.typeChip, { backgroundColor: formType === val ? (TYPE_COLORS[val] ?? colors.tint) : cardBg, borderColor: formType === val ? "transparent" : colors.icon + "40" }]} onPress={() => setFormType(val as InsuranceType)}>
-                  <Text style={{ color: formType === val ? "#fff" : colors.text, fontSize: 13 }}>{TYPE_ICONS[val] ?? "📦"} {label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <CategoryChipPicker group="insurance_type" labels={INSURANCE_TYPE_LABELS} value={formType} onValueChange={(val) => setFormType(val as InsuranceType)} colors={colors} cardBg={cardBg} />
             <Text style={[styles.modalLabel, { color: colors.text }]}>Frequency</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
               {Object.entries(INSURANCE_FREQUENCY_LABELS).map(([val, label]) => (

@@ -17,6 +17,7 @@ import { Colors } from "@/constants/theme"
 import { INCOME_CATEGORY_LABELS, IncomeCategory } from "@/types"
 import { useAuth } from "@/contexts/auth-context"
 import { getLocalTransactions, addLocalTransaction } from "@/services/database"
+import { CategoryChipPicker } from "@/components/category-chip-picker"
 import type { Transaction } from "@/types"
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -178,23 +179,15 @@ export default function IncomeScreen() {
               onChangeText={setFormAmount}
             />
             <Text style={[styles.modalLabel, { color: colors.text }]}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-              {Object.entries(INCOME_CATEGORY_LABELS).map(([val, label]) => (
-                <TouchableOpacity
-                  key={val}
-                  style={[
-                    styles.categoryChip,
-                    {
-                      backgroundColor: formCategory === val ? (CATEGORY_COLORS[val] ?? colors.tint) : cardBg,
-                      borderColor: formCategory === val ? "transparent" : colors.icon + "40",
-                    },
-                  ]}
-                  onPress={() => setFormCategory(val as IncomeCategory)}
-                >
-                  <Text style={{ color: formCategory === val ? "#fff" : colors.text, fontSize: 13 }}>{label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <CategoryChipPicker
+              group="income_category"
+              labels={INCOME_CATEGORY_LABELS}
+              value={formCategory}
+              onValueChange={(val) => setFormCategory(val as IncomeCategory)}
+              colorMap={CATEGORY_COLORS}
+              colors={colors}
+              cardBg={cardBg}
+            />
             <View style={styles.modalActions}>
               <TouchableOpacity style={[styles.modalCancel, { borderColor: colors.icon }]} onPress={() => setShowAdd(false)}>
                 <Text style={{ color: colors.text }}>Cancel</Text>

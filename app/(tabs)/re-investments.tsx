@@ -21,6 +21,7 @@ import {
 } from "@/services/firestore"
 import type { RealEstateInvestment, RealEstateInvestmentType } from "@/types"
 import { RE_INVESTMENT_TYPE_LABELS } from "@/types"
+import { CategoryChipPicker } from "@/components/category-chip-picker"
 
 const TYPE_COLORS: Record<string, string> = {
   residential: "#3b82f6",
@@ -188,13 +189,7 @@ export default function REInvestmentsScreen() {
             <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Property Name" placeholderTextColor={colors.icon} value={formName} onChangeText={setFormName} />
             <TextInput style={[styles.input, { color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Location" placeholderTextColor={colors.icon} value={formLocation} onChangeText={setFormLocation} />
             <Text style={[styles.modalLabel, { color: colors.text }]}>Type</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
-              {Object.entries(RE_INVESTMENT_TYPE_LABELS).map(([val, label]) => (
-                <TouchableOpacity key={val} style={[styles.typeChip, { backgroundColor: formType === val ? (TYPE_COLORS[val] ?? colors.tint) : cardBg, borderColor: formType === val ? "transparent" : colors.icon + "40" }]} onPress={() => setFormType(val as RealEstateInvestmentType)}>
-                  <Text style={{ color: formType === val ? "#fff" : colors.text, fontSize: 13 }}>{TYPE_ICONS[val] ?? "📦"} {label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <CategoryChipPicker group="re_investment_type" labels={RE_INVESTMENT_TYPE_LABELS} value={formType} onValueChange={(val) => setFormType(val as RealEstateInvestmentType)} colors={colors} cardBg={cardBg} />
             <View style={{ flexDirection: "row", gap: 12 }}>
               <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Purchase Price (₹)" placeholderTextColor={colors.icon} keyboardType="numeric" value={formPurchasePrice} onChangeText={setFormPurchasePrice} />
               <TextInput style={[styles.input, { flex: 1, color: colors.text, borderColor: colors.icon, backgroundColor: cardBg }]} placeholder="Current Value (₹)" placeholderTextColor={colors.icon} keyboardType="numeric" value={formCurrentValue} onChangeText={setFormCurrentValue} />

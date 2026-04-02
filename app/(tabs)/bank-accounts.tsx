@@ -18,6 +18,7 @@ import { BankAccountType, BANK_ACCOUNT_TYPE_LABELS } from "@/types"
 import { useAuth } from "@/contexts/auth-context"
 import { getLocalBankAccounts, addLocalBankAccount } from "@/services/database"
 import type { BankAccount } from "@/types"
+import { CategoryChipPicker } from "@/components/category-chip-picker"
 
 const TYPE_COLORS: Record<string, string> = {
   savings: "#22c55e",
@@ -181,23 +182,7 @@ export default function BankAccountsScreen() {
             />
 
             <Text style={[styles.modalLabel, { color: colors.text }]}>Type</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
-              {Object.entries(BANK_ACCOUNT_TYPE_LABELS).map(([val, label]) => (
-                <TouchableOpacity
-                  key={val}
-                  style={[
-                    styles.typeChip,
-                    {
-                      backgroundColor: formType === val ? (TYPE_COLORS[val] ?? colors.tint) : cardBg,
-                      borderColor: formType === val ? "transparent" : colors.icon + "40",
-                    },
-                  ]}
-                  onPress={() => setFormType(val as BankAccountType)}
-                >
-                  <Text style={{ color: formType === val ? "#fff" : colors.text, fontSize: 13 }}>{label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <CategoryChipPicker group="bank_account_type" labels={BANK_ACCOUNT_TYPE_LABELS} value={formType} onValueChange={(val) => setFormType(val as BankAccountType)} colors={colors} cardBg={cardBg} />
 
             <View style={{ flexDirection: "row", gap: 12 }}>
               <TextInput
