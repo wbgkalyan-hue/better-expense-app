@@ -73,6 +73,75 @@ export default function MoreScreen() {
           icon: "📊",
           onPress: () => router.push("/(tabs)/networth"),
         },
+        {
+          title: "RE Investments",
+          subtitle: "Real estate investments and rental income",
+          icon: "🏠",
+          onPress: () => router.push("/(tabs)/re-investments"),
+        },
+        {
+          title: "Insurance",
+          subtitle: "Life, health, vehicle, and property policies",
+          icon: "🛡️",
+          onPress: () => router.push("/(tabs)/insurance"),
+        },
+        {
+          title: "Credit Cards",
+          subtitle: "Track limits, outstanding, and due dates",
+          icon: "💳",
+          onPress: () => router.push("/(tabs)/credit-cards"),
+        },
+        {
+          title: "Loans",
+          subtitle: "Home, car, personal, and other EMIs",
+          icon: "🏦",
+          onPress: () => router.push("/(tabs)/loans"),
+        },
+      ],
+    },
+    {
+      title: "Ledger",
+      items: [
+        {
+          title: "Friends Ledger",
+          subtitle: "Track money lent to and borrowed from friends",
+          icon: "📒",
+          onPress: () => router.push("/(tabs)/friends-ledger"),
+        },
+        {
+          title: "Partners Ledger",
+          subtitle: "Track payments and shares with business partners",
+          icon: "📓",
+          onPress: () => router.push("/(tabs)/partners-ledger"),
+        },
+      ],
+    },
+    {
+      title: "Entities",
+      items: [
+        {
+          title: "Friends",
+          subtitle: "Manage your friends contact list",
+          icon: "👥",
+          onPress: () => router.push("/(tabs)/friends"),
+        },
+        {
+          title: "Partners",
+          subtitle: "Manage your business partners",
+          icon: "🤝",
+          onPress: () => router.push("/(tabs)/partners"),
+        },
+      ],
+    },
+    {
+      title: "Other",
+      items: [
+        {
+          title: "Properties",
+          subtitle: "Owned, rented, and leased properties",
+          icon: "🏘️",
+          onPress: () => router.push("/(tabs)/properties"),
+        },
       ],
     },
     {

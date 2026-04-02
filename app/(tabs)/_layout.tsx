@@ -67,6 +67,42 @@ export default function TabLayout() {
         name="networth"
         options={{ href: null }}
       />
+      <Tabs.Screen
+        name="re-investments"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="insurance"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="credit-cards"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="loans"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="friends-ledger"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="partners-ledger"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="friends"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="partners"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="properties"
+        options={{ href: null }}
+      />
     </Tabs>
   );
 }

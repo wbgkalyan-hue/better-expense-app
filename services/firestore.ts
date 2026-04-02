@@ -10,6 +10,15 @@ import type {
   Asset,
   NetworthSnapshot,
   NotificationPattern,
+  RealEstateInvestment,
+  InsurancePolicy,
+  CreditCard,
+  Loan,
+  Friend,
+  Partner,
+  FriendsLedgerEntry,
+  PartnersLedgerEntry,
+  Property,
 } from "@/types"
 
 type FirestoreDoc = FirebaseFirestoreTypes.DocumentSnapshot
@@ -24,6 +33,20 @@ const INVESTMENT_TX_SENSITIVE = ["amount", "note", "rawNotification"]
 const GOAL_SENSITIVE = ["targetAmount", "currentAmount", "description"]
 const BANK_SENSITIVE = ["balance", "interestRate"]
 const ASSET_SENSITIVE = ["currentValue", "purchaseValue", "description"]
+
+// ---------------------------------------------------------------------------
+// New collection sensitive field definitions
+// ---------------------------------------------------------------------------
+
+const RE_INVESTMENT_SENSITIVE = ["purchasePrice", "currentValue", "monthlyRent", "notes"]
+const INSURANCE_SENSITIVE = ["policyNumber", "premium", "coverageAmount"]
+const CREDIT_CARD_SENSITIVE = ["last4", "creditLimit", "outstandingBalance", "minPayment", "interestRate"]
+const LOAN_SENSITIVE = ["principalAmount", "outstandingAmount", "interestRate", "emiAmount"]
+const FRIEND_SENSITIVE = ["name", "phone", "email"]
+const PARTNER_SENSITIVE = ["name", "company", "phone", "email"]
+const FRIENDS_LEDGER_SENSITIVE = ["amount", "description"]
+const PARTNERS_LEDGER_SENSITIVE = ["amount", "description"]
+const PROPERTY_SENSITIVE = ["address", "currentValue", "purchasePrice", "monthlyRent", "monthlyEmi"]
 
 // ---------------------------------------------------------------------------
 // Generic encrypt / decrypt helpers
@@ -280,4 +303,441 @@ export async function getNetworthSnapshots(): Promise<NetworthSnapshot[]> {
   return snapshot.docs
     .map((doc) => decryptDoc<NetworthSnapshot>(rawDoc(doc), NETWORTH_SENSITIVE))
     .filter((r): r is NetworthSnapshot => r !== null)
+}
+
+// ---------------------------------------------------------------------------
+// Real Estate Investments
+// ---------------------------------------------------------------------------
+
+export async function getRealEstateInvestments(): Promise<RealEstateInvestment[]> {
+  const uid = getUserId()
+  const snapshot = await firestore()
+    .collection("re_investments")
+    .where("userId", "==", uid)
+    .orderBy("purchaseDate", "desc")
+    .get()
+  return snapshot.docs
+    .map((doc) => decryptDoc<RealEstateInvestment>(rawDoc(doc), RE_INVESTMENT_SENSITIVE))
+    .filter((r): r is RealEstateInvestment => r !== null)
+}
+
+export async function addRealEstateInvestment(
+  data: Omit<RealEstateInvestment, "id" | "createdAt" | "updatedAt">,
+): Promise<string> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, RE_INVESTMENT_SENSITIVE)
+  const ref = await firestore()
+    .collection("re_investments")
+    .add({
+      ...payload,
+      createdAt: firestore.FieldValue.serverTimestamp(),
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+  return ref.id
+}
+
+export async function updateRealEstateInvestment(
+  id: string,
+  data: Partial<RealEstateInvestment>,
+): Promise<void> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, RE_INVESTMENT_SENSITIVE)
+  if (isEncryptionReady()) (payload as Record<string, unknown>)._encrypted = true
+  await firestore()
+    .collection("re_investments")
+    .doc(id)
+    .update({
+      ...payload,
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+}
+
+export async function deleteRealEstateInvestment(id: string): Promise<void> {
+  await firestore().collection("re_investments").doc(id).delete()
+}
+
+// ---------------------------------------------------------------------------
+// Insurance Policies
+// ---------------------------------------------------------------------------
+
+export async function getInsurancePolicies(): Promise<InsurancePolicy[]> {
+  const uid = getUserId()
+  const snapshot = await firestore()
+    .collection("insurance_policies")
+    .where("userId", "==", uid)
+    .orderBy("startDate", "desc")
+    .get()
+  return snapshot.docs
+    .map((doc) => decryptDoc<InsurancePolicy>(rawDoc(doc), INSURANCE_SENSITIVE))
+    .filter((r): r is InsurancePolicy => r !== null)
+}
+
+export async function addInsurancePolicy(
+  data: Omit<InsurancePolicy, "id" | "createdAt" | "updatedAt">,
+): Promise<string> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, INSURANCE_SENSITIVE)
+  const ref = await firestore()
+    .collection("insurance_policies")
+    .add({
+      ...payload,
+      createdAt: firestore.FieldValue.serverTimestamp(),
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+  return ref.id
+}
+
+export async function updateInsurancePolicy(
+  id: string,
+  data: Partial<InsurancePolicy>,
+): Promise<void> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, INSURANCE_SENSITIVE)
+  if (isEncryptionReady()) (payload as Record<string, unknown>)._encrypted = true
+  await firestore()
+    .collection("insurance_policies")
+    .doc(id)
+    .update({
+      ...payload,
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+}
+
+export async function deleteInsurancePolicy(id: string): Promise<void> {
+  await firestore().collection("insurance_policies").doc(id).delete()
+}
+
+// ---------------------------------------------------------------------------
+// Credit Cards
+// ---------------------------------------------------------------------------
+
+export async function getCreditCards(): Promise<CreditCard[]> {
+  const uid = getUserId()
+  const snapshot = await firestore()
+    .collection("credit_cards")
+    .where("userId", "==", uid)
+    .get()
+  return snapshot.docs
+    .map((doc) => decryptDoc<CreditCard>(rawDoc(doc), CREDIT_CARD_SENSITIVE))
+    .filter((r): r is CreditCard => r !== null)
+}
+
+export async function addCreditCard(
+  data: Omit<CreditCard, "id" | "createdAt" | "updatedAt">,
+): Promise<string> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, CREDIT_CARD_SENSITIVE)
+  const ref = await firestore()
+    .collection("credit_cards")
+    .add({
+      ...payload,
+      createdAt: firestore.FieldValue.serverTimestamp(),
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+  return ref.id
+}
+
+export async function updateCreditCard(
+  id: string,
+  data: Partial<CreditCard>,
+): Promise<void> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, CREDIT_CARD_SENSITIVE)
+  if (isEncryptionReady()) (payload as Record<string, unknown>)._encrypted = true
+  await firestore()
+    .collection("credit_cards")
+    .doc(id)
+    .update({
+      ...payload,
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+}
+
+export async function deleteCreditCard(id: string): Promise<void> {
+  await firestore().collection("credit_cards").doc(id).delete()
+}
+
+// ---------------------------------------------------------------------------
+// Loans
+// ---------------------------------------------------------------------------
+
+export async function getLoans(): Promise<Loan[]> {
+  const uid = getUserId()
+  const snapshot = await firestore()
+    .collection("loans")
+    .where("userId", "==", uid)
+    .orderBy("startDate", "desc")
+    .get()
+  return snapshot.docs
+    .map((doc) => decryptDoc<Loan>(rawDoc(doc), LOAN_SENSITIVE))
+    .filter((r): r is Loan => r !== null)
+}
+
+export async function addLoan(
+  data: Omit<Loan, "id" | "createdAt" | "updatedAt">,
+): Promise<string> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, LOAN_SENSITIVE)
+  const ref = await firestore()
+    .collection("loans")
+    .add({
+      ...payload,
+      createdAt: firestore.FieldValue.serverTimestamp(),
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+  return ref.id
+}
+
+export async function updateLoan(
+  id: string,
+  data: Partial<Loan>,
+): Promise<void> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, LOAN_SENSITIVE)
+  if (isEncryptionReady()) (payload as Record<string, unknown>)._encrypted = true
+  await firestore()
+    .collection("loans")
+    .doc(id)
+    .update({
+      ...payload,
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+}
+
+export async function deleteLoan(id: string): Promise<void> {
+  await firestore().collection("loans").doc(id).delete()
+}
+
+// ---------------------------------------------------------------------------
+// Friends
+// ---------------------------------------------------------------------------
+
+export async function getFriends(): Promise<Friend[]> {
+  const uid = getUserId()
+  const snapshot = await firestore()
+    .collection("friends")
+    .where("userId", "==", uid)
+    .get()
+  return snapshot.docs
+    .map((doc) => decryptDoc<Friend>(rawDoc(doc), FRIEND_SENSITIVE))
+    .filter((r): r is Friend => r !== null)
+}
+
+export async function addFriend(
+  data: Omit<Friend, "id" | "createdAt" | "updatedAt">,
+): Promise<string> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, FRIEND_SENSITIVE)
+  const ref = await firestore()
+    .collection("friends")
+    .add({
+      ...payload,
+      createdAt: firestore.FieldValue.serverTimestamp(),
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+  return ref.id
+}
+
+export async function updateFriend(
+  id: string,
+  data: Partial<Friend>,
+): Promise<void> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, FRIEND_SENSITIVE)
+  if (isEncryptionReady()) (payload as Record<string, unknown>)._encrypted = true
+  await firestore()
+    .collection("friends")
+    .doc(id)
+    .update({
+      ...payload,
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+}
+
+export async function deleteFriend(id: string): Promise<void> {
+  await firestore().collection("friends").doc(id).delete()
+}
+
+// ---------------------------------------------------------------------------
+// Partners
+// ---------------------------------------------------------------------------
+
+export async function getPartners(): Promise<Partner[]> {
+  const uid = getUserId()
+  const snapshot = await firestore()
+    .collection("partners")
+    .where("userId", "==", uid)
+    .get()
+  return snapshot.docs
+    .map((doc) => decryptDoc<Partner>(rawDoc(doc), PARTNER_SENSITIVE))
+    .filter((r): r is Partner => r !== null)
+}
+
+export async function addPartner(
+  data: Omit<Partner, "id" | "createdAt" | "updatedAt">,
+): Promise<string> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, PARTNER_SENSITIVE)
+  const ref = await firestore()
+    .collection("partners")
+    .add({
+      ...payload,
+      createdAt: firestore.FieldValue.serverTimestamp(),
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+  return ref.id
+}
+
+export async function updatePartner(
+  id: string,
+  data: Partial<Partner>,
+): Promise<void> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, PARTNER_SENSITIVE)
+  if (isEncryptionReady()) (payload as Record<string, unknown>)._encrypted = true
+  await firestore()
+    .collection("partners")
+    .doc(id)
+    .update({
+      ...payload,
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+}
+
+export async function deletePartner(id: string): Promise<void> {
+  await firestore().collection("partners").doc(id).delete()
+}
+
+// ---------------------------------------------------------------------------
+// Friends Ledger
+// ---------------------------------------------------------------------------
+
+export async function getFriendsLedger(): Promise<FriendsLedgerEntry[]> {
+  const uid = getUserId()
+  const snapshot = await firestore()
+    .collection("friends_ledger")
+    .where("userId", "==", uid)
+    .orderBy("date", "desc")
+    .get()
+  return snapshot.docs
+    .map((doc) => decryptDoc<FriendsLedgerEntry>(rawDoc(doc), FRIENDS_LEDGER_SENSITIVE))
+    .filter((r): r is FriendsLedgerEntry => r !== null)
+}
+
+export async function addFriendsLedgerEntry(
+  data: Omit<FriendsLedgerEntry, "id" | "createdAt" | "updatedAt">,
+): Promise<string> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, FRIENDS_LEDGER_SENSITIVE)
+  const ref = await firestore()
+    .collection("friends_ledger")
+    .add({
+      ...payload,
+      createdAt: firestore.FieldValue.serverTimestamp(),
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+  return ref.id
+}
+
+export async function updateFriendsLedgerEntry(
+  id: string,
+  data: Partial<FriendsLedgerEntry>,
+): Promise<void> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, FRIENDS_LEDGER_SENSITIVE)
+  if (isEncryptionReady()) (payload as Record<string, unknown>)._encrypted = true
+  await firestore()
+    .collection("friends_ledger")
+    .doc(id)
+    .update({
+      ...payload,
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+}
+
+export async function deleteFriendsLedgerEntry(id: string): Promise<void> {
+  await firestore().collection("friends_ledger").doc(id).delete()
+}
+
+// ---------------------------------------------------------------------------
+// Partners Ledger
+// ---------------------------------------------------------------------------
+
+export async function getPartnersLedger(): Promise<PartnersLedgerEntry[]> {
+  const uid = getUserId()
+  const snapshot = await firestore()
+    .collection("partners_ledger")
+    .where("userId", "==", uid)
+    .orderBy("date", "desc")
+    .get()
+  return snapshot.docs
+    .map((doc) => decryptDoc<PartnersLedgerEntry>(rawDoc(doc), PARTNERS_LEDGER_SENSITIVE))
+    .filter((r): r is PartnersLedgerEntry => r !== null)
+}
+
+export async function addPartnersLedgerEntry(
+  data: Omit<PartnersLedgerEntry, "id" | "createdAt" | "updatedAt">,
+): Promise<string> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, PARTNERS_LEDGER_SENSITIVE)
+  const ref = await firestore()
+    .collection("partners_ledger")
+    .add({
+      ...payload,
+      createdAt: firestore.FieldValue.serverTimestamp(),
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+  return ref.id
+}
+
+export async function updatePartnersLedgerEntry(
+  id: string,
+  data: Partial<PartnersLedgerEntry>,
+): Promise<void> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, PARTNERS_LEDGER_SENSITIVE)
+  if (isEncryptionReady()) (payload as Record<string, unknown>)._encrypted = true
+  await firestore()
+    .collection("partners_ledger")
+    .doc(id)
+    .update({
+      ...payload,
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+}
+
+export async function deletePartnersLedgerEntry(id: string): Promise<void> {
+  await firestore().collection("partners_ledger").doc(id).delete()
+}
+
+// ---------------------------------------------------------------------------
+// Properties
+// ---------------------------------------------------------------------------
+
+export async function getProperties(): Promise<Property[]> {
+  const uid = getUserId()
+  const snapshot = await firestore()
+    .collection("properties")
+    .where("userId", "==", uid)
+    .get()
+  return snapshot.docs
+    .map((doc) => decryptDoc<Property>(rawDoc(doc), PROPERTY_SENSITIVE))
+    .filter((r): r is Property => r !== null)
+}
+
+export async function addProperty(
+  data: Omit<Property, "id" | "createdAt" | "updatedAt">,
+): Promise<string> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, PROPERTY_SENSITIVE)
+  const ref = await firestore()
+    .collection("properties")
+    .add({
+      ...payload,
+      createdAt: firestore.FieldValue.serverTimestamp(),
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+  return ref.id
+}
+
+export async function updateProperty(
+  id: string,
+  data: Partial<Property>,
+): Promise<void> {
+  const payload = encryptDoc({ ...data } as Record<string, unknown>, PROPERTY_SENSITIVE)
+  if (isEncryptionReady()) (payload as Record<string, unknown>)._encrypted = true
+  await firestore()
+    .collection("properties")
+    .doc(id)
+    .update({
+      ...payload,
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    })
+}
+
+export async function deleteProperty(id: string): Promise<void> {
+  await firestore().collection("properties").doc(id).delete()
 }

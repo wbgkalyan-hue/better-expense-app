@@ -22,3 +22,30 @@ export {
   BANK_ACCOUNT_TYPE_LABELS,
   ASSET_TYPE_LABELS,
 } from "./categories"
+
+export type {
+  RealEstateInvestment,
+  RealEstateInvestmentType,
+} from "./re-investment"
+export { RE_INVESTMENT_TYPE_LABELS } from "./re-investment"
+
+export type { InsurancePolicy, InsuranceType, InsuranceFrequency } from "./insurance"
+export { INSURANCE_TYPE_LABELS, INSURANCE_FREQUENCY_LABELS } from "./insurance"
+
+export type { CreditCard } from "./credit-card"
+
+export type { Loan, LoanType } from "./loan"
+export { LOAN_TYPE_LABELS } from "./loan"
+
+export type { Friend, Partner } from "./entity"
+
+export type {
+  FriendsLedgerEntry,
+  LedgerEntryType,
+  PartnersLedgerEntry,
+  PartnerLedgerType,
+} from "./ledger"
+export { LEDGER_ENTRY_TYPE_LABELS, PARTNER_LEDGER_TYPE_LABELS } from "./ledger"
+
+export type { Property, PropertyType, PropertyCategory } from "./property"
+export { PROPERTY_TYPE_LABELS, PROPERTY_CATEGORY_LABELS } from "./property"
