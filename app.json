@@ -9,6 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "android": {
+      "googleServicesFile": "./google-services.json",
       "package": "com.betterexpenses.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
