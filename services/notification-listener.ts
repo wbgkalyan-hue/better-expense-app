@@ -10,7 +10,7 @@
  * which registers a headless JS task for incoming notifications.
  */
 
-import { AppRegistry, Platform } from "react-native"
+import { AppRegistry, Linking, Platform } from "react-native"
 
 // This will be called by the native NotificationListenerService
 // when a notification is received. We register it as a headless task.
@@ -23,6 +23,27 @@ export interface RawNotificationEvent {
   title: string
   text: string
   time: number
+}
+
+/**
+ * Attempt to load the native module. Returns null if it's unavailable
+ * (e.g. running in Expo Go instead of a dev build).
+ */
+function getNativeModule(): any {
+  try {
+    return require("react-native-notification-listener").default
+  } catch {
+    console.warn(
+      "[NotificationListener] react-native-notification-listener native module is not available. " +
+        "Make sure you are running a development build (expo run:android), not Expo Go.",
+    )
+    return null
+  }
+}
+
+/** Whether the native module is available at all (false in Expo Go). */
+export function isListenerAvailable(): boolean {
+  return Platform.OS === "android" && getNativeModule() != null
 }
 
 /**
@@ -61,10 +82,11 @@ export function registerNotificationHandler(
 export async function hasNotificationPermission(): Promise<boolean> {
   if (Platform.OS !== "android") return false
 
+  const nativeModule = getNativeModule()
+  if (!nativeModule) return false
+
   try {
-    const RNNotificationListener =
-      require("react-native-notification-listener").default
-    const status = await RNNotificationListener.getPermissionStatus()
+    const status = await nativeModule.getPermissionStatus()
     return status === "authorized"
   } catch {
     return false
@@ -73,15 +95,25 @@ export async function hasNotificationPermission(): Promise<boolean> {
 
 /**
  * Open the system settings page where the user can grant notification access.
+ * Tries the native module first, then falls back to opening Android settings directly.
  */
 export async function requestNotificationPermission(): Promise<void> {
   if (Platform.OS !== "android") return
 
+  const nativeModule = getNativeModule()
+  if (nativeModule) {
+    try {
+      await nativeModule.requestPermission()
+      return
+    } catch {
+      // Fall through to manual settings open
+    }
+  }
+
+  // Fallback: open the notification listener settings screen directly
   try {
-    const RNNotificationListener =
-      require("react-native-notification-listener").default
-    await RNNotificationListener.requestPermission()
+    await Linking.openSettings()
   } catch {
-    // Fallback: user needs to enable manually in settings
+    // Last resort — user needs to navigate manually
   }
 }

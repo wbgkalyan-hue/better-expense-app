@@ -38,7 +38,15 @@
         }
       ],
       "@react-native-firebase/app",
-      "@react-native-firebase/auth"
+      "@react-native-firebase/auth",
+      "./plugins/notification-listener-plugin",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#4A90D9"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

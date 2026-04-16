@@ -1,24 +1,26 @@
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from "react-native"
-import { useRouter } from "expo-router"
-import { useColorScheme } from "@/hooks/use-color-scheme"
 import { Colors } from "@/constants/theme"
 import { useAuth } from "@/contexts/auth-context"
-import {
-  hasNotificationPermission,
-  requestNotificationPermission,
-} from "@/services/notification-listener"
-import { performSync } from "@/services/sync"
+import { useColorScheme } from "@/hooks/use-color-scheme"
 import { getUnsyncedCount } from "@/services/database"
 import { isEncryptionReady } from "@/services/encryption"
-import { useState, useEffect } from "react"
+import {
+    hasNotificationPermission,
+    requestNotificationPermission,
+} from "@/services/notification-listener"
+import { initNotificationProcessor } from "@/services/notification-processor"
+import { performSync } from "@/services/sync"
+import { useRouter } from "expo-router"
+import { useCallback, useEffect, useRef, useState } from "react"
+import {
+    Alert,
+    AppState,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from "react-native"
 
 interface MenuItem {
   title: string
@@ -37,13 +39,38 @@ export default function MoreScreen() {
   const [notifPermission, setNotifPermission] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [unsyncedCount, setUnsyncedCount] = useState(0)
+  const appState = useRef(AppState.currentState)
 
   useEffect(() => {
-    hasNotificationPermission().then(setNotifPermission)
+    checkNotificationStatus()
     if (user) {
       getUnsyncedCount(user.uid).then(setUnsyncedCount).catch(() => {})
     }
   }, [user])
+
+  // Re-check notification permission when app comes back to foreground
+  // (e.g. after user returns from Android Settings)
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (appState.current.match(/inactive|background/) && nextState === "active") {
+        checkNotificationStatus()
+      }
+      appState.current = nextState
+    })
+    return () => subscription.remove()
+  }, [checkNotificationStatus])
+
+  const checkNotificationStatus = useCallback(async () => {
+    if (Platform.OS === "android") {
+      const status = await hasNotificationPermission()
+      const wasDisabled = !notifPermission
+      setNotifPermission(status)
+      // If permission was just granted, re-initialize the processor
+      if (status && wasDisabled && user) {
+        initNotificationProcessor(user.uid).catch(() => {})
+      }
+    }
+  }, [notifPermission, user])
 
   const menuSections: { title: string; items: MenuItem[] }[] = [
     {
@@ -149,15 +176,33 @@ export default function MoreScreen() {
       items: [
         {
           title: "Notification Access",
-          subtitle: notifPermission ? "✅ Enabled" : "Grant permission to auto-log transactions",
+          subtitle: notifPermission
+            ? "✅ Enabled — auto-logging transactions"
+            : "⚠️ Disabled — tap to enable auto-logging",
           icon: "🔔",
           onPress: async () => {
             if (notifPermission) {
-              Alert.alert("Notification Access", "Already enabled! Notifications are being monitored.")
+              Alert.alert(
+                "Notification Access",
+                "Auto-logging is active! BetterExpenses is monitoring notifications from banks, UPI apps, and brokers to automatically record your transactions.",
+              )
             } else {
-              await requestNotificationPermission()
-              const status = await hasNotificationPermission()
-              setNotifPermission(status)
+              Alert.alert(
+                "Enable Notification Access",
+                "BetterExpenses needs access to read your notifications to auto-log transactions from banking apps, UPI, and brokers.\n\n" +
+                  "You will be taken to Settings → Notification access. Find BetterExpenses and enable the toggle.",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Open Settings",
+                    onPress: async () => {
+                      await requestNotificationPermission()
+                      // Permission status will be re-checked automatically
+                      // via AppState listener when user returns from Settings
+                    },
+                  },
+                ],
+              )
             }
           },
         },
