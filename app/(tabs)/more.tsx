@@ -7,7 +7,6 @@ import {
     hasNotificationPermission,
     requestNotificationPermission,
 } from "@/services/notification-listener"
-import { initNotificationProcessor } from "@/services/notification-processor"
 import { performSync } from "@/services/sync"
 import { useRouter } from "expo-router"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -41,12 +40,20 @@ export default function MoreScreen() {
   const [unsyncedCount, setUnsyncedCount] = useState(0)
   const appState = useRef(AppState.currentState)
 
+  // Declare useCallback BEFORE effects that reference it
+  const checkNotificationStatus = useCallback(async () => {
+    if (Platform.OS === "android") {
+      const status = await hasNotificationPermission()
+      setNotifPermission(status)
+    }
+  }, [])
+
   useEffect(() => {
     checkNotificationStatus()
     if (user) {
       getUnsyncedCount(user.uid).then(setUnsyncedCount).catch(() => {})
     }
-  }, [user])
+  }, [user, checkNotificationStatus])
 
   // Re-check notification permission when app comes back to foreground
   // (e.g. after user returns from Android Settings)
@@ -59,18 +66,6 @@ export default function MoreScreen() {
     })
     return () => subscription.remove()
   }, [checkNotificationStatus])
-
-  const checkNotificationStatus = useCallback(async () => {
-    if (Platform.OS === "android") {
-      const status = await hasNotificationPermission()
-      const wasDisabled = !notifPermission
-      setNotifPermission(status)
-      // If permission was just granted, re-initialize the processor
-      if (status && wasDisabled && user) {
-        initNotificationProcessor(user.uid).catch(() => {})
-      }
-    }
-  }, [notifPermission, user])
 
   const menuSections: { title: string; items: MenuItem[] }[] = [
     {
